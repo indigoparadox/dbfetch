@@ -1,7 +1,39 @@
 
+from __future__ import division
 import requests
 from datetime import datetime
 from sqlalchemy.orm import sessionmaker
+import matplotlib
+matplotlib.use( 'Agg' )
+matplotlib.rc( 'font', family='monospace', weight='bold', size='8' )
+from matplotlib import pyplot
+
+class Plotter( object ):
+
+    dpi = 100
+
+    def __init__( self, title, x_loc=None, x_form=None, w=300, h=180 ):
+
+        self._w = w / self.dpi
+        self._h = h / self.dpi
+
+        print( h / 100 )
+
+        self.fig, self.ax = pyplot.subplots()
+        self.fig.suptitle( title )
+        self.fig.set_figheight( self._h )
+        self.fig.set_figwidth( self._w )
+        if x_loc:
+            self.ax.xaxis.set_major_locator( x_loc )
+        if x_form:
+            self.ax.xaxis.set_major_formatter( x_form )
+
+    def plot( self, x, y ):
+        self.ax.plot( x, y )
+        self.fig.tight_layout()
+
+    def save( self, out_path ):
+        pyplot.savefig( out_path )
 
 class Requester( object ):
 

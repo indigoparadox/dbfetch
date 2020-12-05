@@ -1,14 +1,12 @@
 #!/usr/local/bin/python2.7
 
+from dbfetch import Plotter
 from datetime import timedelta, datetime
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from ConfigParser import RawConfigParser
 from models import Awair, create_awair
-import matplotlib
-matplotlib.use( 'Agg' )
-from matplotlib import pyplot
 from matplotlib.dates import HourLocator, DateFormatter, DayLocator, MonthLocator
 import os
 
@@ -23,9 +21,6 @@ Session = sessionmaker()
 Session.configure( bind=db )
 session = Session()
 
-dpi = 100
-w = 3
-h = 1.8
 intervals = {
     'day': {
         'start': datetime.now() - timedelta( days=1 ),
@@ -54,7 +49,6 @@ indexes = {
         'title': 'CO2',
     },
 }
-matplotlib.rc( 'font', family='monospace', weight='bold', size='8' )
 
 for l in config.get( 'global', 'locations' ).split( ',' ):
     for t in intervals:
@@ -67,19 +61,17 @@ for l in config.get( 'global', 'locations' ).split( ',' ):
                 times.append( row[0] - timedelta( hours=5 ) )
                 data.append( row[1] )
 
-            fig, ax = pyplot.subplots()
-            fig.suptitle( '{} {}'.format(
-                config.get( 'location-{}'.format( l ), 'title'),
-                indexes[i]['title'] ) )
-            fig.set_figheight( h )
-            fig.set_figwidth( w )
-            ax.xaxis.set_major_locator( intervals[t]['locator'] )
-            ax.xaxis.set_major_formatter( intervals[t]['formatter'] )
+            title = '{} {}'.format(
+                config.get( 'location-{}'.format( l ), 'title' ),
+                indexes[i]['title'] )
 
-            ax.plot( times, data )
-            fig.tight_layout()
+            p = Plotter(
+                title, intervals[t]['locator'], intervals[t]['formatter'] )
+
+            p.plot( times, data )
 
             out_path = os.path.join( config.get( 'global', 'public_html' ),
-                config.get( 'location-' + str( l ), 'output' ) + '-' + i + '-' + t + '.png' )
-            pyplot.savefig( out_path )
+                '{}-{}-{}.png'.format(
+                    config.get( 'location-{}'.format( l ), 'output' ), i, t ) )
+            p.save( out_path )
 

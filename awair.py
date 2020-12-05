@@ -9,16 +9,18 @@ config = RawConfigParser()
 with open( '/home/dbfetch/awair.ini' ) as a:
     res = config.readfp( a )
 
-db = create_engine( config.get( 'db', 'connection' ) )
+db = create_engine( config.get( 'global', 'connection' ) )
 create_awair( db )
 
-r = Requester( db, {
-    'timestamp': lambda o: Requester.format_date( o ),
-} )
-r.request( config.get( 'request', 'url' ) )
-for obj in r.format_json():
-    obj['location'] = config.get( 'request', 'location' )
-    r.store( obj, Awair, Awair.timestamp, timestamp=obj['timestamp'] )
+locations = config.get( 'global', 'locations' ).split( ',' )
+for l in locations:
+    r = Requester( db, {
+        'timestamp': lambda o: Requester.format_date( o ),
+    } )
+    r.request( config.get( 'location-{}'.format( l ), 'url' ) )
+    for obj in r.format_json():
+        obj['location'] = l
+        r.store( obj, Awair, Awair.timestamp, timestamp=obj['timestamp'] )
 
-r.commit()
+    r.commit()
 

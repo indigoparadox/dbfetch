@@ -1,14 +1,18 @@
 #!/usr/local/bin/python2.7
 
-import requests
-from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, DateTime, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from dbfetch import Requester
+from ConfigParser import RawConfigParser
 
 Base = declarative_base()
 
-db = create_engine()
+config = RawConfigParser()
+with open( '/home/dbfetch/covid.ini' ) as a:
+    res = config.readfp( a )
+
+db = create_engine( config.get( 'db', 'connection' ) )
 
 class COVID( Base ):
     __tablename__ = 'covid'
@@ -21,19 +25,14 @@ class COVID( Base ):
     cumulative_number_of_tests = Column( Integer )
 
 Base.metadata.create_all( db )
-Session = sessionmaker()
-Session.configure( bind=db )
-session = Session()
 
-r = requests.get()
+r = Requester( db, modifiers={
+    'test_date': lambda o: Requester.format_date( o ),
+} )
+r.request( config.get( 'request', 'url' ) )
+for obj in r.format_json():
+    r.store( obj, COVID, COVID.test_date, test_date=obj['test_date'] )
 
-for row in r.json():
-    row['test_date'] = datetime.strptime( row['test_date'], '%Y-%m-%dT%H:%M:%S.%f' )
-
-    if not session.query( COVID.test_date ).filter_by( test_date=row['test_date'] ).scalar():
-        db_row = COVID( **row )
-        session.add( db_row )
-
-session.commit()
+r.commit()
 
 

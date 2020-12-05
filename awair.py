@@ -1,14 +1,17 @@
 #!/usr/local/bin/python2.7
 
-import requests
-from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, DateTime, String, Float, Float
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from dbfetch import Requester
+from ConfigParser import RawConfigParser
 
 Base = declarative_base()
 
-db = create_engine()
+config = RawConfigParser()
+with open( '/home/dbfetch/awair.ini' ) as a:
+    res = config.readfp( a )
+
+db = create_engine( config.get( 'db', 'connection' ) )
 
 class Awair( Base ):
     __tablename__ = 'awair'
@@ -31,17 +34,13 @@ class Awair( Base ):
 
 Base.metadata.create_all( db )
 
-r = requests.get()
-reading = r.json()
+r = Requester( db, {
+    'timestamp': lambda o: Requester.format_date( o ),
+} )
+r.request( config.get( 'request', 'url' ) )
+for obj in r.format_json():
+    obj['location'] = config.get( 'request', 'location' )
+    r.store( obj, Awair, Awair.timestamp, timestamp=obj['timestamp'] )
 
-reading['location'] = 1
-reading['timestamp'] = datetime.strptime( reading['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ' )
-
-Session = sessionmaker()
-Session.configure( bind=db )
-session = Session()
-
-reading_row = Awair( **reading )
-session.add( reading_row )
-session.commit()
+r.commit()
 

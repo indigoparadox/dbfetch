@@ -1,10 +1,9 @@
 #!/usr/local/bin/python2.7
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from dbfetch import Requester
 from ConfigParser import RawConfigParser
-from models import COVID, create
+from models import COVID, create_covid
 
 config = RawConfigParser()
 with open( '/home/dbfetch/covid.ini' ) as a:

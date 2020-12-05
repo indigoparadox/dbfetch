@@ -1,12 +1,9 @@
 #!/usr/local/bin/python2.7
 
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from dbfetch import Requester
 from ConfigParser import RawConfigParser
 from models import Awair, create_awair
-
-Base = declarative_base()
 
 config = RawConfigParser()
 with open( '/home/dbfetch/awair.ini' ) as a:

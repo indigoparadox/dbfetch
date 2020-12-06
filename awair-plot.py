@@ -21,32 +21,46 @@ Session = sessionmaker()
 Session.configure( bind=db )
 session = Session()
 
+now = datetime.now()
+
 intervals = {
     'day': {
-        'start': datetime.now() - timedelta( days=1 ),
-        'locator': HourLocator( interval=4 ),
+        'start': now - timedelta( days=1 ),
+        'locator': HourLocator( byhour=Plotter.hour_locator( now ) ),
         'formatter': DateFormatter( '%H:%M' ),
+        'width': 300,
     },
     'week': {
-        'start': datetime.now() - timedelta( days=7 ),
-        'locator': DayLocator( interval=2 ),
+        'start': now - timedelta( days=7 ),
+        'locator': DayLocator( bymonthday=Plotter.week_locator( now ) ),
         'formatter': DateFormatter( '%d' ),
+        'width': 300,
     },
     'month': {
-        'start': datetime.now() - timedelta( weeks=4 ),
+        'start': now - timedelta( weeks=4 ),
         'locator': DayLocator( interval=2 ),
         'formatter': DateFormatter( '%d' ),
+        'width': 500,
     },
     'year': {
-        'start': datetime.now() - timedelta( days=365 ),
+        'start': now - timedelta( days=365 ),
         'locator': MonthLocator( bymonthday=1, interval=1 ),
         'formatter': DateFormatter( '%m/%d' ),
+        'width': 500,
     },
 }
 indexes = {
     'co2': {
         'field': Awair.co2,
         'title': 'CO2',
+    },
+    'voc': {
+        'field': Awair.voc,
+        'title': 'VOC',
+    },
+    'pm25': {
+        'field': Awair.pm25,
+        'title': 'Particles < 2.5um',
     },
 }
 
@@ -66,7 +80,8 @@ for l in config.get( 'global', 'locations' ).split( ',' ):
                 indexes[i]['title'] )
 
             p = Plotter(
-                title, intervals[t]['locator'], intervals[t]['formatter'] )
+                title, intervals[t]['locator'], intervals[t]['formatter'],
+                w=intervals[t]['width'] )
 
             p.plot( times, data )
 

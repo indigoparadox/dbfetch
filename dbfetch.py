@@ -1,11 +1,11 @@
 
 from __future__ import division
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import sessionmaker
 import matplotlib
 matplotlib.use( 'Agg' )
-matplotlib.rc( 'font', family='monospace', weight='bold', size='8' )
+matplotlib.rc( 'font', family='monospace', weight='bold', size='6' )
 from matplotlib import pyplot
 
 class Plotter( object ):
@@ -17,8 +17,6 @@ class Plotter( object ):
         self._w = w / self.dpi
         self._h = h / self.dpi
 
-        print( h / 100 )
-
         self.fig, self.ax = pyplot.subplots()
         self.fig.suptitle( title )
         self.fig.set_figheight( self._h )
@@ -28,12 +26,34 @@ class Plotter( object ):
         if x_form:
             self.ax.xaxis.set_major_formatter( x_form )
 
+        pyplot.grid( True )
+
     def plot( self, x, y ):
         self.ax.plot( x, y )
         self.fig.tight_layout()
 
+        #pyplot.xticks( rotation=35 )
+
     def save( self, out_path ):
         pyplot.savefig( out_path )
+
+    @staticmethod
+    def week_locator( now ):
+        week_ticks = []
+        tick_pos = now
+        while tick_pos >= now - timedelta( days=7 ):
+            week_ticks.append( tick_pos.day )
+            tick_pos -= timedelta( days=1 )
+        return week_ticks
+
+    @staticmethod
+    def hour_locator( now ):
+        hour_ticks = []
+        tick_pos = now
+        while tick_pos >= now - timedelta( days=1 ):
+            hour_ticks.append( tick_pos.hour )
+            tick_pos -= timedelta( hours=6 )
+        return hour_ticks
 
 class Requester( object ):
 

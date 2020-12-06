@@ -7,7 +7,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from ConfigParser import RawConfigParser
 from models import Awair, create_awair
-from matplotlib.dates import HourLocator, DateFormatter, DayLocator, MonthLocator
 import os
 
 config = RawConfigParser()
@@ -23,32 +22,6 @@ session = Session()
 
 now = datetime.now()
 
-intervals = {
-    'day': {
-        'start': now - timedelta( days=1 ),
-        'locator': HourLocator( byhour=Plotter.hour_locator( now ) ),
-        'formatter': DateFormatter( '%H:%M' ),
-        'width': 300,
-    },
-    'week': {
-        'start': now - timedelta( days=7 ),
-        'locator': DayLocator( bymonthday=Plotter.week_locator( now ) ),
-        'formatter': DateFormatter( '%d' ),
-        'width': 300,
-    },
-    'month': {
-        'start': now - timedelta( weeks=4 ),
-        'locator': DayLocator( interval=2 ),
-        'formatter': DateFormatter( '%d' ),
-        'width': 500,
-    },
-    'year': {
-        'start': now - timedelta( days=365 ),
-        'locator': MonthLocator( bymonthday=1, interval=1 ),
-        'formatter': DateFormatter( '%m/%d' ),
-        'width': 500,
-    },
-}
 indexes = {
     'co2': {
         'field': Awair.co2,
@@ -64,6 +37,7 @@ indexes = {
     },
 }
 
+intervals = Plotter.intervals( now )
 for l in config.get( 'global', 'locations' ).split( ',' ):
     for t in intervals:
         for i in indexes:

@@ -35,9 +35,36 @@ class Awair( BaseAwair ):
     pm25 = Column( Float )
     pm10_est = Column( Float )
 
+BasePMSA = declarative_base()
+
+class PMSA( BasePMSA ):
+    __tablename__ = 'pmsa'
+
+    location = Column( Integer, primary_key=True )
+    timestamp = Column( DateTime, primary_key=True )
+    pm10_standard = Column( Integer )
+    pm25_standard = Column( Integer )
+    pm100_standard = Column( Integer )
+    pm10_env = Column( Integer )
+    pm25_env = Column( Integer )
+    pm100_env = Column( Integer )
+    particles_03um = Column( Integer )
+    particles_05um = Column( Integer )
+    particles_10um = Column( Integer )
+    particles_25um = Column( Integer )
+    particles_50um = Column( Integer )
+    particles_100um = Column( Integer )
+    tvoc = Column( Integer )
+    humidity = Column( Integer )
+    temperature = Column( Integer )
+    eco2 = Column( Integer )
+
 def create_covid( db ):
     BaseCOVID.metadata.create_all( db )
 
 def create_awair( db ):
     BaseAwair.metadata.create_all( db )
+
+def create_pmsa( db ):
+    BasePMSA.metadata.create_all( db )
 

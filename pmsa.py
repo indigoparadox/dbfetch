@@ -1,10 +1,24 @@
 #!/usr/local/bin/python2.7
 
+import argparse
+import logging
 from sqlalchemy import create_engine
 from dbfetch import Requester
 from ConfigParser import RawConfigParser
 from models import PMSA, create_pmsa
 from datetime import datetime
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument( '-v', '--verbose', action='store_true' )
+
+args = parser.parse_args()
+
+level = logging.ERROR
+if args.verbose:
+    level = logging.DEBUG
+logging.basicConfig( level=level )
+logger = logging.getLogger( 'main' )
 
 config = RawConfigParser()
 with open( '/home/dbfetch/pmsa.ini' ) as a:
@@ -15,6 +29,7 @@ create_pmsa( db )
 
 locations = config.get( 'global', 'locations' ).split( ',' )
 for l in locations:
+    logger.debug( 'checking location: {}...'.format( l ) )
     r = Requester( db, {
         'timestamp': lambda o: datetime.fromtimestamp( o ).strftime( '%Y-%m-%dT%H:%M:%S.%f' )
     } )

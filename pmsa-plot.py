@@ -8,6 +8,19 @@ from sqlalchemy.orm import sessionmaker
 from ConfigParser import RawConfigParser
 from models import PMSA, create_pmsa
 import os
+import argparse
+import logging
+
+parser = argparse.ArgumentParser()
+parser.add_argument( '-v', '--verbose', action='store_true' )
+args = parser.parse_args()
+
+level = logging.ERROR
+if args.verbose:
+    level = logging.DEBUG
+logging.basicConfig( level=level )
+
+logger = logging.getLogger( 'main' )
 
 config = RawConfigParser()
 with open( '/home/dbfetch/pmsa.ini' ) as a:
@@ -48,6 +61,7 @@ for l in config.get( 'global', 'locations' ).split( ',' ):
                 # Timezone intervention.
                 times.append( row[0] - timedelta( hours=5 ) )
                 data.append( row[1] )
+                logger.debug( '{}'.format( row ) )
 
             title = '{} {}'.format(
                 config.get( 'location-{}'.format( l ), 'title' ),

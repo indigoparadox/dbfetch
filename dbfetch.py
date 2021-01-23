@@ -1,6 +1,7 @@
 
 from __future__ import division
 import requests
+import logging
 from datetime import datetime, timedelta
 from sqlalchemy.orm import sessionmaker
 import matplotlib
@@ -130,7 +131,12 @@ class Requester( object ):
             yield json_obj
 
     def store( self, json_obj, model, filter_col, **criteria ):
-        if not self.session.query( filter_col ).filter_by( **criteria ).scalar():
+        logger = logging.getLogger( 'requester.store' )
+        logger.debug( 'checking for {} in {}...'.format(
+            criteria, filter_col ) )
+        if not self.session.query( filter_col ) \
+        .filter_by( **criteria ).scalar():
+            logger.debug( 'not found, adding...' )
             db_row = model( **json_obj )
             self.session.add( db_row )
 

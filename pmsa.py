@@ -3,7 +3,7 @@
 import argparse
 import logging
 from sqlalchemy import create_engine
-from dbfetch import Requester
+from dbfetch.request import Requester
 from ConfigParser import RawConfigParser
 from models import PMSA, create_pmsa
 from datetime import datetime
@@ -21,7 +21,7 @@ logging.basicConfig( level=level )
 logger = logging.getLogger( 'main' )
 
 config = RawConfigParser()
-with open( '/home/dbfetch/pmsa.ini' ) as a:
+with open( './pmsa.ini' ) as a:
     res = config.readfp( a )
 
 db = create_engine( config.get( 'global', 'connection' ) )

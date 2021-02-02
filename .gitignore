@@ -2,4 +2,6 @@
 *.pyc
 *.ini
 .cache
+.bash_history
+.ssh
 public_html

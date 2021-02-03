@@ -4,11 +4,27 @@ import argparse
 import logging
 import sys
 import inspect
-import dbfetch.models
 from sqlalchemy import create_engine
 from dbfetch.request import Requester
 from ConfigParser import RawConfigParser
 from datetime import datetime
+
+def fetch( module_key, db, config ):
+    logger = logging.getLogger( 'fetch' )
+
+    # Try to setup and run the module.
+    module = None
+    try:
+        module = __import__( module_key, fromlist=[''] )
+    except ImportError:
+        logger.debug(
+            'module {} not found, trying dbfetch.request.{}...'.format(
+                module_key, module_key ) )
+        module_key = 'dbfetch.request.{}'.format( module_key )
+        module = __import__( module_key, fromlist=[''] )
+
+    r = module.ModelRequester( db, config )
+    r.fetch()
 
 def main():
 
@@ -40,31 +56,12 @@ def main():
     with open( args.config ) as a:
         res = config.readfp( a )
 
-    # Setup active DBs.
-    dbs = {}
-    for module in modules_run:
-        dbs[module] = create_engine( config.get( module, 'connection' ) )
-
-    # Grab a list of currently available models to work with.
-    # TODO: Make this more modular? Work with models outside the package?
-    model_objects = {}
-    m = sys.modules['dbfetch.models']
-    for name, cls in inspect.getmembers( m ):
-        #if str( cls ).startswith( 'dbfetch.models' ):
-        if not name.startswith( 'Base' ) and \
-        not name.startswith( '_' ) and \
-        not name.startswith( 'create' ) and \
-        not name == 'declarative_base' and \
-        not name == 'sql':
-            logger.debug( 'found model: {}'.format( name ) )
-            model_objects[name] = cls
-
-    # Setup DB metadata.
-    for key in model_objects:
-        if key.lower() in dbs:
-            logger.debug( 'creating db schema for {}...'.format( key ) )
-            model_objects[key].create_all( dbs[key.lower()] )
-
+    # Run each requested module.
+    for module_key in modules_run:
+        eng = create_engine( config.get( module_key, 'connection' ) )
+        with eng.connect() as db:
+            fetch( module_key, db, config )
+            
 if '__main__' == __name__:
     main()
 

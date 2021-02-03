@@ -48,7 +48,7 @@ class Requester( object ):
             criteria, filter_col ) )
         if not self.session.query( filter_col ) \
         .filter_by( **criteria ).scalar():
-            logger.debug( 'not found, adding...' )
+            logger.debug( 'storing new data: {}'.format( json_obj ) )
             db_row = model( **json_obj )
             self.session.add( db_row )
 

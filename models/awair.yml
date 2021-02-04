@@ -1,0 +1,50 @@
+---
+tablename: awair
+timestamp: timestamp
+index_plot: single
+indexes:
+  co2:
+    field: co2
+    title: CO2
+  voc:
+    field: voc
+    title: VOC
+  pm25:
+    field: pm25
+    title: Particles < 2.5um
+transformations:
+  timestamp:
+  - Requester.format_date
+fields:
+  location:
+    type: int
+    primary_key: true
+  timestamp:
+    type: datetime
+    primary_key: true
+  score:
+    type: int
+  dew_point:
+    type: float
+  temp:
+    type: float
+  humid:
+    type: float
+  abs_humid:
+    type: float
+  co2:
+    type: float
+  co2_est:
+    type: float
+  voc:
+    type: float
+  voc_baseline:
+    type: float
+  voc_h2_raw:
+    type: float
+  voc_ethanol_raw:
+    type: float
+  pm25:
+    type: float
+  pm10_est:
+    type: float

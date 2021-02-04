@@ -5,33 +5,87 @@ import logging
 import sys
 import os
 import inspect
-from sqlalchemy import create_engine
+import sqlalchemy as sql
+import yaml
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 from dbfetch.request import Requester
 from dbfetch.plot import Plotter
 from ConfigParser import RawConfigParser, NoSectionError, NoOptionError
 from datetime import datetime, timedelta
 
-def import_module( module_key, module_path ):
-    logger = logging.getLogger( 'import' )
+def import_model( module_key, db, models_path ):
 
-    # Try (pretty hard) to import the module.
-    module = None
-    try:
-        module = __import__( module_key, fromlist=[''] )
-    except ImportError:
-        # TODO: Configurable module import paths.
-        logger.debug(
-            'module {} not found, trying {}.{}...'.format(
-                module_key, module_path, module_key ) )
-        try:
-            module = __import__( 
-                '{}.{}'.format( module_path, module_key ), fromlist=[''] )
-        except ImportError as e:
-            logger.error( e )
-            return None
-    return module
+    logger = logging.getLogger( 'model.import' )
+
+    BaseModel = declarative_base()
+
+    model_def = None
+    model_path = os.path.join( models_path, '{}.yml'.format( module_key ) )
+    with open( model_path, 'r' ) as m_file:
+        model_def = yaml.load( m_file )
+
+    model_fields = {}
+    for field_key in model_def['fields']:
+        field_def = model_def['fields'][field_key]
+
+        # The sz is special since it gets passed to the type.
+        type_args = []
+        if 'sz' in field_def:
+            type_args.append( int( field_def['sz'] ) )
+            field_def.pop( 'sz' )
+
+        # Create the column.
+        if 'float' == field_def['type']:
+            field_def.pop( 'type' )
+            model_fields[field_key] = \
+                sql.Column( sql.Float( *type_args ), **field_def )
+        elif 'int' == field_def['type']:
+            field_def.pop( 'type' )
+            model_fields[field_key] = \
+                sql.Column( sql.Integer( *type_args ), **field_def )
+        elif 'datetime' == field_def['type']:
+            field_def.pop( 'type' )
+            model_fields[field_key] = \
+                sql.Column( sql.DateTime( *type_args ), **field_def )
+        elif 'string' == field_def['type']:
+            field_def.pop( 'type' )
+            model_fields[field_key] = \
+                sql.Column( sql.String( *type_args ), **field_def )
+
+    model_fields['__tablename__'] = model_def['tablename']
+    
+    model = type( 'FetchModel', (BaseModel,), model_fields )
+
+    logger.debug( 'ensuring fields for {}...'.format( module_key ) )
+    BaseModel.metadata.create_all( db )
+
+    # Parse transformations.
+    t_func_out = lambda o: o
+    for t_key in model_def['transformations']:
+        for t_iter in model_def['transformations'][t_key]:
+            t_path = t_iter.split( '.' )
+
+            # Descend from root element in globals() to a method/class (if any).
+            if 'int' == t_path[0]:
+                t_func_out = lambda o: int( o )
+            else:
+                t_func = globals()[t_path[0]]
+                t_path.pop( 0 )
+                while 0 < len( t_path ):
+                    t_func = getattr( t_func, t_path[0] )
+                    t_path.pop( 0 )
+
+                t_func_out = lambda o: t_func( o )
+        model_def['transformations'][t_key] = t_func_out
+
+    # Tidy up parsed fields and attach resulting model.
+    model_def.pop( 'fields' )
+    model_def.pop( 'tablename' )
+    model_def['model'] = model
+
+    return model_def
 
 def fetch( args, config ):
     logger = logging.getLogger( 'fetch' )
@@ -39,28 +93,24 @@ def fetch( args, config ):
     # Run each requested module.
     for module_key in args.modules.split( ',' ):
 
-        module = import_module( module_key, 'dbfetch.request' )
-
-        eng = create_engine( config.get( module_key, 'connection' ) )
+        eng = sql.create_engine( config.get( module_key, 'connection' ) )
         with eng.connect() as db:
 
-            logger.debug( 'ensuring schema...' )
-            module.ModelRequester.model.create_all( db )
+            module = import_model( module_key, db, args.models )
 
             locations = config.get( module_key, 'locations' ).split( ',' )
             for l in locations:
                 logger.debug( 'checking location: {}...'.format( l ) )
-                r = Requester( db, module.ModelRequester.transformations )
+                r = Requester( db, module['transformations'] )
                 json = Requester.request(
                     config.get( '{}-location-{}'.format(
                         module_key, l ), 'url' ) )
                 for obj in r.format_json( json ):
                     obj['location'] = l
-                    model = module.ModelRequester.model
-                    timestamp_key = module.ModelRequester.timestamp_key
-                    criteria = {timestamp_key: obj[timestamp_key]}
+                    model = module['model']
+                    criteria = {module['timestamp']: obj[module['timestamp']]}
                     r.store(
-                        obj, model, getattr( model, timestamp_key ),
+                        obj, model, getattr( model, module['timestamp'] ),
                         **criteria )
 
                 r.commit()
@@ -70,14 +120,15 @@ def plot_combined( module_key, module, args, config, session ):
 
     now = datetime.now()
     intervals = Plotter.intervals( now )
-    indexes = module.ModelPlotter.indexes
+    indexes = module['indexes']
+    timestamp = getattr( module['model'], module['timestamp'] )
 
     for l in config.get( module_key, 'locations' ).split( ',' ):
         for t in intervals:
 
             title = '{} {}'.format(
                 config.get( '{}-location-{}'.format( module_key, l ), 'title' ),
-                module.ModelPlotter.title )
+                module['title'] )
 
             p = Plotter(
                 title, intervals[t]['locator'], intervals[t]['formatter'],
@@ -86,10 +137,8 @@ def plot_combined( module_key, module, args, config, session ):
             for i in indexes:
                 times = []
                 data = []
-                for row in session.query(
-                module.ModelPlotter.timestamp, indexes[i]['field'] ) \
-                .filter(
-                module.ModelPlotter.timestamp >= intervals[t]['start'] ):
+                for row in session.query( timestamp, indexes[i]['field'] ) \
+                .filter( timestamp >= intervals[t]['start'] ):
                     # Timezone intervention.
                     times.append( row[0] - timedelta( hours=5 ) )
                     data.append( row[1] )
@@ -108,17 +157,16 @@ def plot_single( module_key, module, args, config, session ):
 
     now = datetime.now()
     intervals = Plotter.intervals( now )
-    indexes = module.ModelPlotter.indexes
+    indexes = module['indexes']
+    timestamp = getattr( module['model'], module['timestamp'] )
 
     for l in config.get( module_key, 'locations' ).split( ',' ):
         for t in intervals:
             for i in indexes:
                 times = []
                 data = []
-                for row in session.query(
-                module.ModelPlotter.timestamp, indexes[i]['field'] ) \
-                .filter(
-                module.ModelPlotter.timestamp >= intervals[t]['start'] ):
+                for row in session.query( timestamp, indexes[i]['field'] ) \
+                .filter( timestamp >= intervals[t]['start'] ):
                     # Timezone intervention.
                     times.append( row[0] - timedelta( hours=5 ) )
                     data.append( row[1] )
@@ -151,19 +199,17 @@ def plot( args, config ):
     # Run each requested module.
     for module_key in args.modules.split( ',' ):
 
-        module = import_module( module_key, 'dbfetch.plot' )
-        if not module:
-            continue
-
-        eng = create_engine( config.get( module_key, 'connection' ) )
+        eng = sql.create_engine( config.get( module_key, 'connection' ) )
         with eng.connect() as db:
+
+            module = import_model( module_key, db, args.models )
 
             Session = sessionmaker()    
             Session.configure( bind=db )
             session = Session()
 
             # Try to setup and run the module.
-            if 'combined' == module.ModelPlotter.index_plot:
+            if 'combined' == module['index_plot']:
                 plot_combined( module_key, module, args, config, session )
             else:
                 # Single plots by default.
@@ -192,6 +238,10 @@ def main():
         '-c', '--config', action='store', default='dbfetch.ini',
         help='specify config file; default is ' + \
             'dbfetch.ini in current directory' )
+
+    parser.add_argument(
+        '-m', '--models', action='store', default='models',
+        help='specify path to model definition yml files' )
 
     if 2 >= len( sys.argv ):
         parser.print_help( sys.stderr )

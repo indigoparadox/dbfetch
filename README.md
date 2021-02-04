@@ -18,3 +18,6 @@ Three modules so far:
 * covid
 
   Polls the NY state COVID testing data analytics website and stores a copy of the data.
+
+Now refactored so the models are defined in YAML files. No module-specific code remains.
+

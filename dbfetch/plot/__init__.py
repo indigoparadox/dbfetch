@@ -5,6 +5,7 @@ matplotlib.use( 'Agg' )
 matplotlib.rc( 'font', family='monospace', weight='bold', size='6' )
 from matplotlib import pyplot
 from matplotlib.dates import HourLocator, DateFormatter, DayLocator, MonthLocator
+from datetime import datetime, timedelta
 
 class Plotter( object ):
 

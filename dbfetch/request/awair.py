@@ -33,11 +33,11 @@ class AwairModel( BaseAwair ):
 class ModelRequester( Requester ):
 
     def __init__( self, db, config ):
-        self.logger = logging.getLogger( 'requester.pmsa' )
+        self.logger = logging.getLogger( 'requester.awair' )
 
         self.config = config
 
-        self.logger.debug( 'creating schema...' )
+        self.logger.debug( 'ensuring schema...' )
         AwairModel.create_all( db )
 
         super( ModelRequester, self ).__init__( db, {

@@ -40,7 +40,7 @@ class ModelRequester( Requester ):
 
         self.config = config
 
-        self.logger.debug( 'creating schema...' )
+        self.logger.debug( 'ensuring schema...' )
         PMSAModel.create_all( db )
 
         super( ModelRequester, self ).__init__( db, {

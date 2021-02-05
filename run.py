@@ -51,10 +51,16 @@ def plot_combined( module_key, module, args, config, session ):
     timestamp = getattr( module['model'], module['timestamp'] )
 
     for l in config.get( module_key, 'locations' ).split( ',' ):
+        l_cfg_key = '{}-location-{}'.format( module_key, l )
+        tz_offset = 0
+        try:
+            tz_offset = config.getint( l_cfg_key, 'tz_offset' )
+            logger.debug( 'using timezone offset of {}'.format( tz_offset ) )
+        except NoOptionError as e:
+            logger.debug( 'no timezone offset specified; using 0' )
         for t in intervals:
 
-            title = '{} {}'.format(
-                config.get( '{}-location-{}'.format( module_key, l ), 'title' ),
+            title = '{} {}'.format( config.get( l_cfg_key, 'title' ),
                 module['title'] )
 
             p = Plotter(
@@ -67,7 +73,7 @@ def plot_combined( module_key, module, args, config, session ):
                 for row in session.query( timestamp, indexes[i]['field'] ) \
                 .filter( timestamp >= intervals[t]['start'] ):
                     # Timezone intervention.
-                    times.append( row[0] - timedelta( hours=5 ) )
+                    times.append( row[0] - timedelta( hours=tz_offset ) )
                     data.append( row[1] )
 
                 p.plot( times, data, label=indexes[i]['label'] )
@@ -88,6 +94,13 @@ def plot_single( module_key, module, args, config, session ):
     timestamp = getattr( module['model'], module['timestamp'] )
 
     for l in config.get( module_key, 'locations' ).split( ',' ):
+        l_cfg_key = '{}-location-{}'.format( module_key, l )
+        tz_offset = 0
+        try:
+            tz_offset = config.getint( l_cfg_key, 'tz_offset' )
+            logger.debug( 'using timezone offset of {}'.format( tz_offset ) )
+        except NoOptionError as e:
+            logger.debug( 'no timezone offset specified; using 0' )
         for t in intervals:
             for i in indexes:
                 times = []
@@ -95,12 +108,10 @@ def plot_single( module_key, module, args, config, session ):
                 for row in session.query( timestamp, indexes[i]['field'] ) \
                 .filter( timestamp >= intervals[t]['start'] ):
                     # Timezone intervention.
-                    times.append( row[0] - timedelta( hours=5 ) )
+                    times.append( row[0] + timedelta( hours=tz_offset ) )
                     data.append( row[1] )
 
-                title = '{} {}'.format(
-                    config.get( '{}-location-{}'.format( module_key, l ),
-                        'title' ),
+                title = '{} {}'.format( config.get( l_cfg_key, 'title' ),
                     indexes[i]['title'] )
 
                 p = Plotter(

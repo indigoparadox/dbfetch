@@ -14,6 +14,27 @@ from dbfetch.plot import Plotter
 from ConfigParser import RawConfigParser, NoSectionError, NoOptionError
 from datetime import datetime, timedelta
 
+def fetch_mod( module_key, module, args, config, db ):
+
+    logger = logging.getLogger( 'fetch.{}'.format( module_key ) )
+
+    locations = config.get( module_key, 'locations' ).split( ',' )
+    for l in locations:
+        logger.debug( 'checking location: {}...'.format( l ) )
+        r = Requester( db, module['transformations'] )
+        json = Requester.request(
+            config.get( '{}-location-{}'.format(
+                module_key, l ), 'url' ) )
+        for obj in r.format_json( json ):
+            obj['location'] = l
+            criteria = {module['timestamp']: obj[module['timestamp']]}
+            r.store(
+                obj, module['model'],
+                getattr( module['model'], module['timestamp'] ),
+                **criteria )
+
+        r.commit()
+
 def fetch( args, config ):
     logger = logging.getLogger( 'fetch' )
 
@@ -25,24 +46,9 @@ def fetch( args, config ):
 
             module = import_model( module_key, db, args.models )
 
-            locations = config.get( module_key, 'locations' ).split( ',' )
-            for l in locations:
-                logger.debug( 'checking location: {}...'.format( l ) )
-                r = Requester( db, module['transformations'] )
-                json = Requester.request(
-                    config.get( '{}-location-{}'.format(
-                        module_key, l ), 'url' ) )
-                for obj in r.format_json( json ):
-                    obj['location'] = l
-                    model = module['model']
-                    criteria = {module['timestamp']: obj[module['timestamp']]}
-                    r.store(
-                        obj, model, getattr( model, module['timestamp'] ),
-                        **criteria )
+            fetch_mod( module_key, module, args, config, db )
 
-                r.commit()
-
-def plot_combined( module_key, module, args, config, session ):
+def plot_mod( module_key, module, args, config, session, combined=False ):
     logger = logging.getLogger( 'plot.combined' )
 
     now = datetime.now()
@@ -53,55 +59,34 @@ def plot_combined( module_key, module, args, config, session ):
     for l in config.get( module_key, 'locations' ).split( ',' ):
         l_cfg_key = '{}-location-{}'.format( module_key, l )
         tz_offset = 0
+        p = None # Initalize for scope.
+        title = None # Initalize for scope.
+        last_idx = None # Initalize for scope.
+
         try:
             tz_offset = config.getint( l_cfg_key, 'tz_offset' )
             logger.debug( 'using timezone offset of {}'.format( tz_offset ) )
         except NoOptionError as e:
             logger.debug( 'no timezone offset specified; using 0' )
-        for t in intervals:
 
-            title = '{} {}'.format( config.get( l_cfg_key, 'title' ),
-                module['title'] )
-
-            p = Plotter(
-                title, intervals[t]['locator'], intervals[t]['formatter'],
-                w=intervals[t]['width'] )
-
-            for i in indexes:
-                times = []
-                data = []
-                for row in session.query( timestamp, indexes[i]['field'] ) \
-                .filter( timestamp >= intervals[t]['start'] ):
-                    # Timezone intervention.
-                    times.append( row[0] - timedelta( hours=tz_offset ) )
-                    data.append( row[1] )
-
-                p.plot( times, data, label=indexes[i]['label'] )
-
+        def save_plot( p, idx, interval ):
             out_path = os.path.join(
                 config.get( module_key, 'public_html' ),
-                    '{}-{}-{}.png'.format(
-                        config.get( '{}-location-{}'.format(
-                            module_key, l ), 'output' ), i, t ) )
+                '{}-{}-{}.png'.format(
+                    config.get( l_cfg_key, 'output' ), idx, interval ) )
             p.save( out_path )
 
-def plot_single( module_key, module, args, config, session ):
-    logger = logging.getLogger( 'plot.single' )
-
-    now = datetime.now()
-    intervals = Plotter.intervals( now )
-    indexes = module['indexes']
-    timestamp = getattr( module['model'], module['timestamp'] )
-
-    for l in config.get( module_key, 'locations' ).split( ',' ):
-        l_cfg_key = '{}-location-{}'.format( module_key, l )
-        tz_offset = 0
-        try:
-            tz_offset = config.getint( l_cfg_key, 'tz_offset' )
-            logger.debug( 'using timezone offset of {}'.format( tz_offset ) )
-        except NoOptionError as e:
-            logger.debug( 'no timezone offset specified; using 0' )
         for t in intervals:
+
+            if combined:
+                # Prepare the title for the whole plot.
+                title = '{} {}'.format( config.get( l_cfg_key, 'title' ),
+                    module['title'] )
+
+                p = Plotter(
+                    title, intervals[t]['locator'], intervals[t]['formatter'],
+                    w=intervals[t]['width'] )
+
             for i in indexes:
                 times = []
                 data = []
@@ -111,28 +96,31 @@ def plot_single( module_key, module, args, config, session ):
                     times.append( row[0] + timedelta( hours=tz_offset ) )
                     data.append( row[1] )
 
-                title = '{} {}'.format( config.get( l_cfg_key, 'title' ),
-                    indexes[i]['title'] )
+                if combined:
+                    # Just plot, save the combined plot later.
+                    p.plot( times, data, label=indexes[i]['label'] )
 
-                p = Plotter(
-                    title, intervals[t]['locator'], intervals[t]['formatter'],
-                    w=intervals[t]['width'] )
+                else:
+                    # Plot and save.
+                    title = '{} {}'.format( config.get( l_cfg_key, 'title' ),
+                        indexes[i]['title'] )
 
-                p.plot( times, data )
+                    p = Plotter(
+                        title, intervals[t]['locator'],
+                        intervals[t]['formatter'],
+                        w=intervals[t]['width'] )
 
-                out_path = os.path.join(
-                    config.get( module_key, 'public_html' ),
-                        '{}-{}-{}.png'.format(
-                            config.get( '{}-location-{}'.format(
-                                module_key, l ), 'output' ), i, t ) )
-                p.save( out_path )
+                    p.plot( times, data )
+
+                    save_plot( p, i, t )
+
+                last_idx = i
+            
+            if combined:
+                save_plot( p, last_idx, t )
 
 def plot( args, config ):
     logger = logging.getLogger( 'plot' )
-
-    # Plotter code is a bit more genericized because plotter data will always
-    # come from the DB, while fetching the data originally could hypothetically
-    # come from anywhere.
 
     # Run each requested module.
     for module_key in args.modules.split( ',' ):
@@ -147,11 +135,8 @@ def plot( args, config ):
             session = Session()
 
             # Try to setup and run the module.
-            if 'combined' == module['index_plot']:
-                plot_combined( module_key, module, args, config, session )
-            else:
-                # Single plots by default.
-                plot_single( module_key, module, args, config, session )
+            plot_mod( module_key, module, args, config, session,
+                combined=('combined' == module['index_plot']) )
 
 def main():
 

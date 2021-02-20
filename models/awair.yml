@@ -36,6 +36,8 @@ fields:
     type: float
   co2_est:
     type: float
+  co2_est_baseline:
+    type: float
   voc:
     type: float
   voc_baseline:

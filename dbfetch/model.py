@@ -48,7 +48,7 @@ def import_model( module_key, db, models_path ):
                 sql.Column( sql.String( *type_args ), **field_def )
 
     model_fields['__tablename__'] = model_def['tablename']
-    
+
     model = type( 'FetchModel', (BaseModel,), model_fields )
 
     logger.debug( 'ensuring fields for {}...'.format( module_key ) )

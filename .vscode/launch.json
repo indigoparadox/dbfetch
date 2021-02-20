@@ -10,6 +10,14 @@
             "request": "launch",
             "program": "run.py",
             "console": "integratedTerminal",
+            "args": ["fetch", "awair,pmsa,covid"]
+        },
+        {
+            "name": "Python: fetch (verbose)",
+            "type": "python",
+            "request": "launch",
+            "program": "run.py",
+            "console": "integratedTerminal",
             "args": ["-v", "fetch", "awair,pmsa,covid"]
         }
     ]

@@ -173,7 +173,7 @@ def main():
     args = parser.parse_args()
 
     # Setup the logger.
-    level = logging.ERROR
+    level = logging.WARNING
     if args.verbose:
         level = logging.DEBUG
     logging.basicConfig( level=level )

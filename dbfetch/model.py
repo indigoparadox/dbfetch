@@ -4,15 +4,18 @@ import os
 import yaml
 import sqlalchemy as sql
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 from dbfetch.request import Requester
 from dbfetch.plot import Plotter
-
+    
 def import_model( module_key, db, models_path ):
 
     logger = logging.getLogger( 'model.import' )
 
     BaseModel = declarative_base()
+    inspector = Inspector.from_engine( db )
 
     model_def = None
     model_path = os.path.join( models_path, '{}.yml'.format( module_key ) )
@@ -29,7 +32,21 @@ def import_model( module_key, db, models_path ):
             type_args.append( int( field_def['sz'] ) )
             field_def.pop( 'sz' )
 
-        # Create the column.
+        db_columns = [c['name'] for c in inspector.get_columns(
+            model_def['tablename'] )]
+        if not field_key in db_columns:
+            logger.warning( 'field %s not found in table; creating...',
+                field_key )
+
+            # Create the column in the database table.
+            db.execute( 'ALTER TABLE {} ADD COLUMN {} {}{}'.format(
+                model_def['tablename'],
+                field_key,
+                model_def['fields'][field_key]['type'],
+                '' if 0 == len( type_args ) else '({})'.format(
+                    ','.join( type_args ) ) ) )
+
+        # Create the column in our SQLAlchemy model.
         if 'float' == field_def['type']:
             field_def.pop( 'type' )
             model_fields[field_key] = \

@@ -6,6 +6,7 @@ import sys
 import os
 from ConfigParser import RawConfigParser, NoSectionError, NoOptionError
 from datetime import datetime, timedelta
+from logging.handlers import SMTPHandler
 
 import sqlalchemy as sql
 from sqlalchemy.exc import ArgumentError
@@ -38,15 +39,22 @@ def fetch_mod( module_key, module, args, config, dbc ):
 
 def fetch( args, config ):
 
+    logger = logging.getLogger( 'fetch' )
+
     # Run each requested module.
     for module_key in args.modules.split( ',' ):
 
-        eng = sql.create_engine( config.get( module_key, 'connection' ) )
-        with eng.connect() as dbc:
+        try:
+            eng = sql.create_engine( config.get( module_key, 'connection' ) )
+            with eng.connect() as dbc:
 
-            module = import_model( module_key, dbc, args.models )
+                module = import_model( module_key, dbc, args.models )
 
-            fetch_mod( module_key, module, args, config, dbc )
+                fetch_mod( module_key, module, args, config, dbc )
+
+        except Exception as e:
+            logger.error( 'failed to execute module %s: %s', module_key, e )
+
 
 def plot_mod( module_key, module, args, config, session, combined=False ):
     logger = logging.getLogger( 'plot.combined' )
@@ -183,6 +191,20 @@ def main():
     config = RawConfigParser()
     with open( args.config ) as cfg_fp:
         config.readfp( cfg_fp )
+
+    try:
+        mail_handler = SMTPHandler(
+            mailhost=config.get( 'smtp', 'server' ),
+            fromaddr=config.get( 'smtp', 'from' ),
+            toaddrs=config.get( 'smtp', 'to'),
+            subject='[dbfetch] Critical Error' )
+        mail_handler.setLevel( logging.ERROR )
+        logging.getLogger( None ).addHandler( mail_handler )
+    except Exception as e:
+        logger.debug( 'error setting up mail handler: %s', e )
+
+    if args.verbose:
+        logger.error( 'testing critical error notification...' )
 
     try:
         args.func( args, config )

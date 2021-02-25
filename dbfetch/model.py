@@ -5,10 +5,7 @@ import yaml
 import sqlalchemy as sql
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime, timedelta
-from dbfetch.request import Requester
-from dbfetch.plot import Plotter
+from datetime import datetime
     
 def import_model( module_key, db, models_path ):
 
@@ -34,7 +31,7 @@ def import_model( module_key, db, models_path ):
 
         db_columns = [c['name'] for c in inspector.get_columns(
             model_def['tablename'] )]
-        if not field_key in db_columns:
+        if [] != db_columns and not field_key in db_columns:
             logger.warning( 'field %s not found in table; creating...',
                 field_key )
 

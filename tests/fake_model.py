@@ -63,7 +63,10 @@ class FakeModel( BaseProvider ):
             'type': 'datetime',
             'timestamp': True,
             'transformations': [
-                'ModelTransforms.str_date_no_z'
+                {'function': 'ModelTransforms.str_replace',
+                    'args': ['Z', '']},
+                {'function': 'datetime.strptime',
+                    'args': ['%Y-%m-%dT%H:%M:%S.%f']}
             ] if timestamp_str else [
                 'int',
                 'datetime.fromtimestamp'

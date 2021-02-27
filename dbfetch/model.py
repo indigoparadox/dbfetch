@@ -35,9 +35,8 @@ class ModelFormatterMixin( object ):
 
 class ModelTransforms( object ):
     @staticmethod
-    def str_date_no_z( date_str ):
-        return datetime.strptime(
-            date_str.replace( 'Z', '' ), '%Y-%m-%dT%H:%M:%S.%f' )
+    def str_replace( in_str, target, replace ):
+        return in_str.replace( target, replace )
 
 class DBModelBuilder( object ):
 
@@ -107,7 +106,17 @@ class DBModelBuilder( object ):
 
     def add_transformation( self, field, transform ):
 
-        t_path = transform.split( '.' )
+        t_path = None
+        t_args = []
+        if isinstance( transform, dict ):
+            t_path = transform['function'].split( '.' )
+            t_args = transform['args']
+            assert( isinstance( t_args, list ) )
+        elif isinstance( transform, str ):
+            t_path = transform.split( '.' )
+        else:
+            raise Exception( 'invalid transform specified: {}'.format( e ) )
+
         t_func = None
 
         # Descend from root element in globals() to a method/class (if any).
@@ -125,9 +134,9 @@ class DBModelBuilder( object ):
         if field in self.transforms:
             prev_func = self.transforms[field]
             self.transforms[field] = \
-                lambda o: t_func( prev_func( o ) )
+                lambda o: t_func( prev_func( o ), *t_args )
         else:
-            self.transforms[field] = lambda o: t_func( o )
+            self.transforms[field] = lambda o: t_func( o, *t_args )
 
     def build_model( self ):
 

@@ -9,7 +9,13 @@ fields:
     primary_key: true
     timestamp: true
     transformations:
-    - ModelTransforms.str_date_no_z
+    - function: ModelTransforms.str_replace
+      args:
+      - 'Z'
+      - ''
+    - function: datetime.strptime
+      args:
+      - '%Y-%m-%dT%H:%M:%S.%f'
   county:
     type: string
     sz: 32

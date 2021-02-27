@@ -1,44 +1,23 @@
 
 import logging
-import sqlalchemy as sql
-from .request import Requester
-from .model import import_model
+import requests
 
-def fetch_mod( module_key, module, args, config, dbc ):
+class Fetcher( object ):
 
-    logger = logging.getLogger( 'fetch.{}'.format( module_key ) )
+    def __init__( self ):
 
-    locations = config.get( module_key, 'locations' ).split( ',' )
-    for loc in locations:
-        logger.debug( 'checking location: %s...', loc )
-        req = Requester( dbc, module['transformations'] )
-        json = Requester.request(
-            config.get( '{}-location-{}'.format(
-                module_key, loc ), 'url' ) )
-        for obj in req.format_json( json ):
-            obj['location'] = loc
-            criteria = {module['timestamp']: obj[module['timestamp']]}
-            req.store(
-                obj, module['model'],
-                getattr( module['model'], module['timestamp'] ),
-                **criteria )
+        self.logger = logging.getLogger( 'fetch' )
 
-        req.commit()
+    def fetch_location( self, url, location ):
 
-def fetch( args, config ):
+        # TODO: Handle authentication.
 
-    logger = logging.getLogger( 'fetch' )
-
-    # Run each requested module.
-    for module_key in args.modules.split( ',' ):
-
-        try:
-            eng = sql.create_engine( config.get( module_key, 'connection' ) )
-            with eng.connect() as dbc:
-
-                module = import_model( module_key, dbc, args.models )
-
-                fetch_mod( module_key, module, args, config, dbc )
-
-        except Exception as e:
-            logger.error( 'failed to execute module %s: %s', module_key, e )
+        self.logger.debug( 'checking location: %s...', location )
+        json_data= requests.get( url ).json()
+        if isinstance( json_data, list ):
+            for obj in json_data:
+                obj['location'] = location
+                yield obj
+        else:
+            json_data['location'] = location
+            yield json_data

@@ -1,18 +1,6 @@
 ---
 tablename: pmsa
-timestamp: timestamp
 index_plot: single
-indexes:
-  voc:
-    field: tvoc
-    title: TVOC
-  pm25:
-    field: particles_25um
-    title: Particles < 2.5um
-transformations:
-  timestamp:
-  - int
-  - datetime.fromtimestamp
 fields:
   location:
     type: int
@@ -20,6 +8,10 @@ fields:
   timestamp:
     type: datetime
     primary_key: true
+    timestamp: true
+    transformations:
+      - int
+      - datetime.fromtimestamp
   pm10_standard:
     type: int
   pm25_standard:
@@ -40,12 +32,14 @@ fields:
     type: int
   particles_25um:
     type: int
+    index_as: Particles < 2.5um
   particles_50um:
     type: int
   particles_100um:
     type: int
   tvoc:
     type: int
+    index_as: TVOC
   humidity:
     type: int
   temperature:

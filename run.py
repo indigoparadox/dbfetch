@@ -9,8 +9,22 @@ from logging.handlers import SMTPHandler
 
 from sqlalchemy.exc import ArgumentError
 
-from dbfetch.plot import Plotter
-from dbfetch.fetch import fetch
+from dbfetch.model import DBModelBuilder
+#from dbfetch.plot import Plotter
+from dbfetch.fetch import Fetcher
+from dbfetch.storage import Storage, StorageDuplicateException
+
+def fetch( storage, Model, **kwargs ):
+    fetcher = Fetcher()
+    for obj in fetcher.fetch_location( kwargs['url'], kwargs['index'] ):
+        fmt_obj = Model.format_fetched_object( obj )
+        try:
+            storage.store( fmt_obj, Model, Model.timestamp.name )
+        except StorageDuplicateException as e:
+            storage.log_duplicate( e )
+
+def plot():
+    pass
 
 def main():
 
@@ -20,12 +34,12 @@ def main():
     sub_p = parser.add_subparsers()
 
     sp_fetch = sub_p.add_parser( 'fetch', help='fetches data and stores it' )
-    sp_fetch.set_defaults( func=fetch )
+    sp_fetch.set_defaults( method=fetch )
     sp_fetch.add_argument( 'modules', action='store', nargs='?',
         help='select which modules to run, separated by commas' )
 
     sp_plot = sub_p.add_parser( 'plot', help='creates data graphic' )
-    sp_plot.set_defaults( func=Plotter.plot_chart )
+    sp_plot.set_defaults( method=plot )
     sp_plot.add_argument( 'modules', action='store', nargs='?',
         help='select which modules to run, separated by commas' )
 
@@ -73,7 +87,17 @@ def main():
         logger.error( 'testing critical error notification...' )
 
     try:
-        args.func( args, config )
+        for module_key in args.modules.split( ',' ):
+            module_cfg = dict( config.items( module_key ) )
+            for location in module_cfg['locations']:
+                with Storage( module_cfg['connection'] ) as storage:
+                    location_args = \
+                        dict( config.items(
+                            '{}-location-{}'.format( module_key, location ) ) )
+                    location_args['index'] = location
+                    model = DBModelBuilder.import_model( module_key, storage.db, args.models )
+                    args.method( storage, model, **location_args )
+
     except (NoSectionError, NoOptionError) as e:
         logger.error( 'invalid module config: %s', e )
     except ArgumentError as e:

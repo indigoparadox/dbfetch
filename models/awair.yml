@@ -1,6 +1,5 @@
 ---
 tablename: awair
-timestamp: timestamp
 index_plot: single
 indexes:
   co2:
@@ -12,9 +11,6 @@ indexes:
   pm25:
     field: pm25
     title: Particles < 2.5um
-transformations:
-  timestamp:
-  - Requester.format_date
 fields:
   location:
     type: int
@@ -22,6 +18,9 @@ fields:
   timestamp:
     type: datetime
     primary_key: true
+    timestamp: true
+    transformations:
+    - ModelTransforms.str_date_no_z
   score:
     type: int
   dew_point:

@@ -46,6 +46,8 @@ class TestModel( unittest.TestCase ):
 
         Model = self.builder.build_model()
 
+        self.assertFalse( Model.multi )
+
         for field_def in fields:
             self.assertTrue( hasattr( Model, field_def['name'] ) )
 
@@ -57,6 +59,8 @@ class TestModel( unittest.TestCase ):
             self.builder.add_column( field_def )
 
         Model = self.builder.build_model()
+
+        self.assertFalse( Model.multi )
 
         self.assertTrue( hasattr( Model, fields[0]['name'] ) )
         self.assertIsInstance( getattr( Model, fields[1]['name'] ),
@@ -107,11 +111,15 @@ class TestModel( unittest.TestCase ):
         Model = self.builder.build_model()
         self.builder.create_table( self.dbc )
 
+        self.assertFalse( Model.multi )
+
         self.assertEqual( self.builder.timestamp, getattr( Model, Model.timestamp_key ) )
         self.assertEqual( type( self.builder.timestamp ), Column )
 
     @unittest.expectedFailure
     def test_format_data( self ):
+
+        # TODO: Adjust test so UTC is not a factor.
 
         schema = self.fake.schema()
         row = self.fake.row( schema )
@@ -122,6 +130,8 @@ class TestModel( unittest.TestCase ):
             self.builder.add_column( field )
         Model = self.builder.build_model()
         self.builder.create_table( self.dbc )
+
+        self.assertFalse( Model.multi )
 
         store_row = Model.format_fetched_object( row )
 
@@ -141,9 +151,42 @@ class TestModel( unittest.TestCase ):
         Model = self.builder.build_model()
         self.builder.create_table( self.dbc )
 
+        self.assertFalse( Model.multi )
+
         store_row = Model.format_fetched_object( row )
 
         self.assertEqual(
             store_row['timestamp'],
             timestamp
         )
+
+    def test_multi_plot( self ):
+
+        schema = self.fake.schema( field_ct=6 )
+
+        for field_def in schema:
+            self.builder.add_column( field_def )
+
+        self.builder.multi = True
+
+        Model = self.builder.build_model()
+
+        self.assertTrue( Model.multi )
+        self.assertEqual( 3, len( Model.plot_indexes ) )
+
+    def test_model_dict( self ):
+
+        schema = self.fake.schema( field_ct=6 )
+
+        for field_def in schema:
+            self.builder.add_column( field_def )
+
+        Model = self.builder.build_model()
+
+        row = self.fake.row( schema )
+        obj = Model( **row )
+
+        print( obj.__dict__ )
+
+        for key_iter in row:
+            self.assertEqual( obj.__dict__[key_iter], row[key_iter] )

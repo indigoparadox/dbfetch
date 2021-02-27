@@ -1,32 +1,25 @@
 ---
 tablename: covid
-timestamp: test_date
-index_plot: combined
-title: COVID-19 New Positive Tests
-indexes:
-  new_positives:
-    field: new_positives
-    label: New Positives
-  total_number_of_tests:
-    field: total_number_of_tests
-    label: Total Tests
-transformations:
-  test_date:
-  - Requester.format_date
+index_plot: multi
 fields:
   location:
     type: int
   test_date:
     type: datetime
     primary_key: true
+    timestamp: true
+    transformations:
+    - Requester.format_date
   county:
     type: string
     sz: 32
   new_positives:
     type: int
+    index_as: New Positives
   cumulative_number_of_positives:
     type: int
   total_number_of_tests:
     type: int
+    index_as: Total Tests
   cumulative_number_of_tests:
     type: int

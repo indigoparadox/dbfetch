@@ -8,9 +8,9 @@ from faker.providers import BaseProvider
 
 class FakeModel( BaseProvider ):
 
-    def sql_type( self ):
-        types = ['int', 'float', 'string']
-        return random.choice( types )
+    def sql_type( self, number ):
+        num_types = ['int', 'float']
+        return random.choice( num_types ) if number else 'string'
 
     def column_name( self ):
         names_start = ['eco2', 'tvoc', 'tests', 'cities', 'pm25', 'co2',
@@ -24,10 +24,10 @@ class FakeModel( BaseProvider ):
         transformations = ['int', 'math.sqrt', 'float']
         return random.choice( transformations )
 
-    def field_def( self, primary_key=False, transforms=False ):
+    def field_def( self, primary_key=False, transforms=False, number=False ):
         field_out = {
             'name': self.column_name(),
-            'type': self.sql_type()
+            'type': self.sql_type( number )
         }
 
         if primary_key:
@@ -46,10 +46,12 @@ class FakeModel( BaseProvider ):
 
         return field_out
 
-    def schema( self, timestamp_str=False ):
+    def schema( self, timestamp_str=False, field_ct=3 ):
         fields = []
-        while 3 > len( fields ):
-            fake_field = self.field_def()
+        while field_ct > len( fields ):
+            fake_field = self.field_def( number=(0 == len( fields ) % 2) )
+            if 0 == len( fields ) % 2:
+                fake_field['index_as'] = fake_field['name'].upper()
             if fake_field['name'] not in [f['name'] for f in fields]:
                 fields.append( fake_field )
 

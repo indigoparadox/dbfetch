@@ -1,16 +1,6 @@
 ---
 tablename: awair
 index_plot: single
-indexes:
-  co2:
-    field: co2
-    title: CO2
-  voc:
-    field: voc
-    title: VOC
-  pm25:
-    field: pm25
-    title: Particles < 2.5um
 fields:
   location:
     type: int
@@ -33,12 +23,14 @@ fields:
     type: float
   co2:
     type: float
+    index_as: CO2
   co2_est:
     type: float
   co2_est_baseline:
     type: float
   voc:
     type: float
+    index_as: VOC
   voc_baseline:
     type: float
   voc_h2_raw:
@@ -47,5 +39,6 @@ fields:
     type: float
   pm25:
     type: float
+    index_as: Particles < 2.5um
   pm10_est:
     type: float

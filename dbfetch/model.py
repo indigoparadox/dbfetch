@@ -41,7 +41,7 @@ class ModelTransforms( object ):
 
 class DBModelBuilder( object ):
 
-    def __init__( self, table_name ):
+    def __init__( self, table_name, index_plot='single' ):
 
         self.model_fields = {
             '__tablename__': table_name
@@ -50,6 +50,7 @@ class DBModelBuilder( object ):
         self.logger = logging.getLogger( 'model' )
         self.transforms = {}
         self.base = declarative_base()
+        self.multi = True if 'multi' == index_plot else False
 
     @staticmethod
     def type_args( field_def, modify=True ):
@@ -144,6 +145,8 @@ class DBModelBuilder( object ):
             raise DBModelTimestampException( 'no timestamp column' )
         FetchModel.timestamp_key = self.timestamp.name
         FetchModel.transforms = self.transforms
+        FetchModel.multi = self.multi
+        FetchModel.plot_indexes = self.plot_indexes
 
         return FetchModel
 
@@ -161,7 +164,8 @@ class DBModelBuilder( object ):
         with open( model_path, 'r' ) as m_file:
             model_def = yaml.load( m_file )
 
-        builder = DBModelBuilder( model_def['tablename'] )
+        builder = DBModelBuilder(
+            model_def['tablename'], model_def['index_plot'] )
 
         for field_key in model_def['fields']:
             field_def = model_def['fields'][field_key]

@@ -10,11 +10,12 @@ from smtplib import SMTPServerDisconnected
 
 import logging
 from logging.handlers import SMTPHandler
+from datetime import datetime
 
 from sqlalchemy.exc import ArgumentError
 
 from dbfetch.model import DBModelBuilder
-#from dbfetch.plot import Plotter
+from dbfetch.plot import Plotter
 from dbfetch.fetch import Fetcher
 from dbfetch.storage import Storage, StorageDuplicateException
 
@@ -27,8 +28,25 @@ def fetch( storage, Model, **kwargs ):
         except StorageDuplicateException as e:
             storage.log_duplicate( e )
 
-def plot():
-    pass
+def plot( storage, Model, **kwargs ):
+    plotter = Plotter( multi=Model.multi, **kwargs )
+    interval_data = Plotter.intervals( datetime.now() )
+    for interval in interval_data:
+        query = storage.session.query( Model ) \
+            .filter( Model.timestamp >= interval_data[interval]['start'] )
+        rows = query.all()
+
+        for plot_iter in plotter.plot_location(
+            interval,
+            Model.timestamp.name,
+            [r.__dict__ for r in rows],
+            Model.plot_indexes,
+            multi=Model.multi,
+            **kwargs
+        ):
+
+            plot_iter.plot()
+            plot_iter.save()
 
 def main():
 
@@ -99,10 +117,11 @@ def main():
             module_cfg = dict( config.items( module_key ) )
             for location in module_cfg['locations']:
                 with Storage( module_cfg['connection'] ) as storage:
-                    location_args = \
+                    location_args = module_cfg.copy()
+                    location_args.update(
                         dict( config.items(
-                            '{}-location-{}'.format( module_key, location ) ) )
-                    location_args['index'] = location
+                            '{}-location-{}'.format( module_key, location ) ) ) )
+                    location_args['location'] = location
                     model = DBModelBuilder.import_model( module_key, storage.db, args.models )
                     args.method( storage, model, **location_args )
 

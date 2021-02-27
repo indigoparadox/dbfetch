@@ -2,52 +2,123 @@
 from __future__ import division
 import logging
 import os
-import sqlalchemy as sql
-from sqlalchemy.orm import sessionmaker
-from ConfigParser import RawConfigParser, NoSectionError, NoOptionError
+from datetime import datetime, timedelta
 import matplotlib
 matplotlib.use( 'Agg' )
 matplotlib.rc( 'font', family='monospace', weight='bold', size='6' )
 from matplotlib import pyplot
 from matplotlib.dates import HourLocator, DateFormatter, DayLocator, MonthLocator
-from datetime import datetime, timedelta
-from .model import import_model
 
 class Plotter( object ):
 
-    dpi = 100
+    class Plot( object ):
 
-    def __init__( self, title, x_loc=None, x_form=None, w=300, h=180 ):
+        def __init__( self, plotter, interval, **kwargs ):
 
-        self._w = w / self.dpi
-        self._h = h / self.dpi
+            self.dpi = int( kwargs['dpi'] ) if 'dpi' in kwargs else 100
 
-        self._plots = 0
+            self._width = int( kwargs['width'] ) / self.dpi \
+                if 'width' in kwargs else 300 / self.dpi
+            self._height = int( kwargs['height'] ) / self.dpi \
+                if 'height' in kwargs else 180 / self.dpi
 
-        self.fig, self.ax = pyplot.subplots()
-        self.fig.suptitle( title )
-        self.fig.set_figheight( self._h )
-        self.fig.set_figwidth( self._w )
-        if x_loc:
-            self.ax.xaxis.set_major_locator( x_loc )
-        if x_form:
-            self.ax.xaxis.set_major_formatter( x_form )
+            self.tz_offset = int( kwargs['tz_offset'] ) if 'tz_offset' in \
+                kwargs else 0
 
-        pyplot.grid( True )
+            self.times = []
+            self.data = []
 
-    def _plot( self, x, y, label=None ):
-        if label:
-            self.ax.plot( x, y, label=label )
-        else:
-            self.ax.plot( x, y )
+            self.interval = interval
+            self.filename = None
+            self.plotter = plotter
 
-        self._plots += 1
-        if 1 < self._plots:
+            self.index = None
+
+            self.fig, self.ax = pyplot.subplots()
+            self.fig.set_figheight( self._height )
+            self.fig.set_figwidth( self._width )
+
+            interval_data = Plotter.intervals( datetime.now() )[interval]
+
+            self.ax.xaxis.set_major_locator( interval_data['locator'] )
+            self.ax.xaxis.set_major_formatter( interval_data['formatter'] )
+
+            pyplot.grid( True )
+
+            self._title = ''
+
+        @property
+        def title( self ):
+            return self._title
+
+        @title.setter
+        def title( self, value ):
+            self._title = value
+            self.fig.suptitle( value )
+
+        def set_plot_data( self, rows, time_column_name, data_column_name ):
+
+            self.index = data_column_name
+
+            # Timezone intervention.
+            self.times = [r[time_column_name] + \
+                timedelta( hours=self.tz_offset ) for r in rows]
+            self.data = [r[data_column_name] for r in rows]
+
+        def plot( self ):
+            self.ax.plot( self.times, self.data )
+            self.fig.tight_layout()
+            #pyplot.xticks( rotation=35 )
+
+        def save( self ):
+            out_path = os.path.join(
+                self.plotter.public_html, self.filename )
+            pyplot.savefig( out_path )
+
+    class MultiPlot( Plot ):
+
+        ''' A special plot with multiple datasets. '''
+
+        def __init__( self, plotter, title, interval, **kwargs ):
+            super( Plotter.MultiPlot, self ).__init__(
+                plotter, interval, **kwargs )
+
+            # Indexed by column names.
+            self.times = {}
+            self.data = {}
+            self.labels = {}
+            self.index = []
+
+        def set_plot_data( self, rows, t_column_name, d_column_name, label, idx ):
+
+            self.index.append( d_column_name )
+
+            # Timezone intervention.
+            self.times[idx] = [t[t_column_name] + \
+                timedelta( hours=self.tz_offset ) for t in rows]
+            self.data[idx] = [d[d_column_name] for d in rows]
+            self.labels[idx] = label
+
+        def plot( self ):
+            for idx in self.index:
+                assert( idx in self.data )
+                assert( idx in self.times )
+                assert( idx in self.labels )
+                self.ax.plot(
+                    self.times[idx], self.data[idx], label=self.labels[idx] )
             self.ax.legend()
+            self.fig.tight_layout()
 
-        self.fig.tight_layout()
+    def __init__( self, **kwargs ):
 
-        #pyplot.xticks( rotation=35 )
+        ''' A factory for creating plots. '''
+
+        self.public_html = kwargs['public_html'] if 'public_html' in kwargs \
+            else '/tmp'
+
+        self.logger = logging.getLogger( 'plot' )
+
+        self.kwargs = kwargs
 
     def save( self, out_path ):
         pyplot.savefig( out_path )
@@ -99,94 +170,36 @@ class Plotter( object ):
             },
         }
 
-    @staticmethod
-    def plot_mod( module_key, module, args, config, session, combined=False ):
-        logger = logging.getLogger( 'plot.combined' )
+    def plot_location( self, inter, t_col_nm, rows, idxs, **kwargs ):
 
-        now = datetime.now()
-        intervals = Plotter.intervals( now )
-        indexes = module['indexes']
-        timestamp = getattr( module['model'], module['timestamp'] )
+        plot = None # Initalize for scope.
+        multi = False
+        output = kwargs['output'] if 'output' in kwargs else ''
+        title = kwargs['title'] if 'title' in kwargs else ''
 
-        l_cfg_key = None
-        for loc in config.get( module_key, 'locations' ).split( ',' ):
-            l_cfg_key = '{}-location-{}'.format( module_key, loc )
-            tz_offset = 0
-            plot = None # Initalize for scope.
-            title = None # Initalize for scope.
-            last_idx = None # Initalize for scope.
+        if 'multi' in kwargs and kwargs['multi']:
+            plot = Plotter.MultiPlot( self, title, inter )
+            multi = True
 
-            try:
-                tz_offset = config.getint( l_cfg_key, 'tz_offset' )
-                logger.debug( 'using timezone offset of %d', tz_offset )
-            except NoOptionError:
-                logger.debug( 'no timezone offset specified; using 0' )
+        for idx in idxs:
 
-            def save_plot( plot_sav, idx, interval ):
-                out_path = os.path.join(
-                    config.get( module_key, 'public_html' ),
-                    '{}-{}-{}.png'.format(
-                        config.get( l_cfg_key, 'output' ), idx, interval ) )
-                plot_sav.save( out_path )
+            if not multi:
+                plot = Plotter.Plot( self, inter )
 
-            for inter in intervals:
+            # Indexes should be a dict of column_name=label.
+            plot_args = [rows, t_col_nm, idx]
+            if multi:
+                plot_args.append( idxs[idx] )
+                plot_args.append( idx )
+            plot.set_plot_data( *plot_args )
+            plot.filename = '{}{}-{}.png'.format(
+                output + '-' if output else '', idx, inter )
 
-                if combined:
-                    # Prepare the title for the whole plot.
-                    title = '{} {}'.format( config.get( l_cfg_key, 'title' ),
-                        module['title'] )
+            if not multi:
+                if title:
+                    plot.title = '{} {}'.format( title, idxs[idx] )
+                yield plot
 
-                    plot = Plotter(
-                        title, intervals[inter]['locator'], intervals[inter]['formatter'],
-                        w=intervals[inter]['width'] )
-
-                for idx in indexes:
-                    times = []
-                    data = []
-                    for row in session.query( timestamp, indexes[idx]['field'] ) \
-                    .filter( timestamp >= intervals[inter]['start'] ):
-                        # Timezone intervention.
-                        times.append( row[0] + timedelta( hours=tz_offset ) )
-                        data.append( row[1] )
-
-                    if combined:
-                        # Just plot, save the combined plot later.
-                        plot._plot( times, data, label=indexes[idx]['label'] )
-
-                    else:
-                        # Plot and save.
-                        title = '{} {}'.format( config.get( l_cfg_key, 'title' ),
-                            indexes[idx]['title'] )
-
-                        plot = Plotter(
-                            title, intervals[inter]['locator'],
-                            intervals[inter]['formatter'],
-                            w=intervals[inter]['width'] )
-
-                        plot._plot( times, data )
-
-                        save_plot( plot, idx, inter )
-
-                    last_idx = idx
-
-                if combined:
-                    save_plot( plot, last_idx, inter )
-
-    @staticmethod
-    def plot_chart( args, config ):
-
-        # Run each requested module.
-        for module_key in args.modules.split( ',' ):
-
-            eng = sql.create_engine( config.get( module_key, 'connection' ) )
-            with eng.connect() as dbc:
-
-                module = import_model( module_key, dbc, args.models )
-
-                session_proto = sessionmaker()
-                session_proto.configure( bind=dbc )
-                session = session_proto()
-
-                # Try to setup and run the module.
-                Plotter.plot_mod( module_key, module, args, config, session,
-                    combined=('combined' == module['index_plot']) )
+        if multi:
+            plot.title = title
+            yield plot

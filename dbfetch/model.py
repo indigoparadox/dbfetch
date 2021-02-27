@@ -51,6 +51,7 @@ class DBModelBuilder( object ):
         self.transforms = {}
         self.base = declarative_base()
         self.multi = True if 'multi' == index_plot else False
+        self.timestamp_key = None
 
     @staticmethod
     def type_args( field_def, modify=True ):
@@ -95,8 +96,7 @@ class DBModelBuilder( object ):
             self.model_fields[field_def['name']] = \
                 sql.Column( sql.DateTime( *type_args ), **field_def )
             if is_timestamp:
-                # Purposely not defined in init so tests work later.
-                self.timestamp = self.model_fields[field_def['name']]
+                self.timestamp_key = field_def['name']
         elif 'string' == field_type:
             self.model_fields[field_def['name']] = \
                 sql.Column( sql.String( *type_args ), **field_def )
@@ -141,9 +141,9 @@ class DBModelBuilder( object ):
             self.model_fields )
 
         # All data processed through this utility needs a timestamp.
-        if not hasattr( self, 'timestamp' ):
+        if not self.timestamp_key:
             raise DBModelTimestampException( 'no timestamp column' )
-        FetchModel.timestamp_key = self.timestamp.name
+        FetchModel.timestamp_key = self.timestamp_key
         FetchModel.transforms = self.transforms
         FetchModel.multi = self.multi
         FetchModel.plot_indexes = self.plot_indexes

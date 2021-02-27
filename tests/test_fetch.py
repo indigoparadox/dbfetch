@@ -53,11 +53,12 @@ class TestFetch( unittest.TestCase ):
 
     def test_fetch_location_list( self ):
 
-        fake_fields = self.fake.schema()
+        schema = self.fake.schema()
+        timestamp_key = [c['name'] for c in schema if 'timestamp' in c][0]
         fake_data = []
         for i in range( 1000 ):
-            row = self.fake.row( fake_fields )
-            row['timestamp'] = random.randint( 11140000, 19950000 )
+            row = self.fake.row( schema )
+            row[timestamp_key] = random.randint( 11140000, 19950000 )
             fake_data.append( row )
         self.server.data = fake_data
 
@@ -71,9 +72,10 @@ class TestFetch( unittest.TestCase ):
 
     def test_fetch_location( self ):
 
-        fake_fields = self.fake.schema()
-        fake_row = self.fake.row( fake_fields )
-        fake_row['timestamp'] = random.randint( 11140000, 19950000 )
+        schema = self.fake.schema()
+        timestamp_key = [c['name'] for c in schema if 'timestamp' in c][0]
+        fake_row = self.fake.row( schema )
+        fake_row[timestamp_key] = random.randint( 11140000, 19950000 )
         self.server.data = fake_row
 
         fetcher = Fetcher()

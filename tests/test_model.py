@@ -99,7 +99,7 @@ class TestModel( unittest.TestCase ):
         }
         self.builder.add_column( field_def )
 
-        self.assertFalse( hasattr( self.builder, 'timestamp' ) )
+        self.assertIsNone( self.builder.timestamp_key )
 
         field_def = {
             'name': 'test_ts',
@@ -113,18 +113,25 @@ class TestModel( unittest.TestCase ):
 
         self.assertFalse( Model.multi )
 
-        self.assertEqual( self.builder.timestamp, getattr( Model, Model.timestamp_key ) )
-        self.assertEqual( type( self.builder.timestamp ), Column )
+        self.assertEqual( self.builder.timestamp_key, Model.timestamp_key )
 
-    @unittest.expectedFailure
     def test_format_data( self ):
-
-        # TODO: Adjust test so UTC is not a factor.
-
+        
         schema = self.fake.schema()
         row = self.fake.row( schema )
+        timestamp_key = [c['name'] for c in schema if 'timestamp' in c][0]
+        self.assertIsNotNone( timestamp_key )
+        datetime_test = datetime.now()
+        timestamp_test = datetime_test
+        if hasattr( timestamp_test, 'timestamp' ):
+            timestamp_test = int( timestamp_test.timestamp() )
+        else:
+            print( 'falling back to datetime diff' )
+            timestamp_test = \
+                int( (timestamp_test - datetime( 1970, 1, 1 )).total_seconds() )
+        datetime_test = datetime.fromtimestamp( timestamp_test ) # Strip uS.
 
-        row['timestamp'] = 12345
+        row[timestamp_key] = timestamp_test
 
         for field in schema:
             self.builder.add_column( field )
@@ -132,12 +139,13 @@ class TestModel( unittest.TestCase ):
         self.builder.create_table( self.dbc )
 
         self.assertFalse( Model.multi )
+        self.assertIsNotNone( Model.timestamp_key )
 
         store_row = Model.format_fetched_object( row )
 
         self.assertEqual(
-            store_row['timestamp'],
-            datetime( 1969, 12, 31, 22, 25, 45 )
+            store_row[timestamp_key],
+            datetime_test
         )
 
     def test_model_transforms( self ):
@@ -152,11 +160,12 @@ class TestModel( unittest.TestCase ):
         self.builder.create_table( self.dbc )
 
         self.assertFalse( Model.multi )
+        self.assertIsNotNone( Model.timestamp_key )
 
         store_row = Model.format_fetched_object( row )
 
         self.assertEqual(
-            store_row['timestamp'],
+            store_row[Model.timestamp_key],
             timestamp
         )
 
@@ -172,6 +181,7 @@ class TestModel( unittest.TestCase ):
         Model = self.builder.build_model()
 
         self.assertTrue( Model.multi )
+        self.assertIsNotNone( Model.timestamp_key )
         self.assertEqual( 3, len( Model.plot_indexes ) )
 
     def test_model_dict( self ):

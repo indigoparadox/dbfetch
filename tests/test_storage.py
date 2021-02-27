@@ -93,7 +93,7 @@ class TestStorage( unittest.TestCase ):
         self.builders.append( builder )
 
         row = self.fake.row( field_defs )
-        self.storage.store( row, Model, 'timestamp' )
+        self.storage.store( row, Model, Model.timestamp_key )
 
         with self.assertRaises( StorageDuplicateException ):
-            self.storage.store( row, Model, 'timestamp' )
+            self.storage.store( row, Model, Model.timestamp_key )

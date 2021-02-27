@@ -9,7 +9,7 @@ fields:
     primary_key: true
     timestamp: true
     transformations:
-    - Requester.format_date
+    - ModelTransforms.str_date_no_z
   county:
     type: string
     sz: 32

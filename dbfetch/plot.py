@@ -193,7 +193,9 @@ class Plotter( object ):
                 plot_args.append( idx )
             plot.set_plot_data( *plot_args )
             plot.filename = '{}{}-{}.png'.format(
-                output + '-' if output else '', idx, inter )
+                output.replace( '_', '-' ) + '-' if output else '',
+                idx.replace( '_', '-' ),
+                inter )
 
             if not multi:
                 if title:

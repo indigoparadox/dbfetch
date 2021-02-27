@@ -24,21 +24,22 @@ def fetch( storage, Model, **kwargs ):
     for obj in fetcher.fetch_location( kwargs['url'], kwargs['index'] ):
         fmt_obj = Model.format_fetched_object( obj )
         try:
-            storage.store( fmt_obj, Model, Model.timestamp.name )
+            storage.store( fmt_obj, Model, Model.timestamp_key )
         except StorageDuplicateException as e:
             storage.log_duplicate( e )
 
 def plot( storage, Model, **kwargs ):
     plotter = Plotter( multi=Model.multi, **kwargs )
     interval_data = Plotter.intervals( datetime.now() )
+    timestamp_comparator = getattr( Model, Model.timestamp_key )
     for interval in interval_data:
         query = storage.session.query( Model ) \
-            .filter( Model.timestamp >= interval_data[interval]['start'] )
+            .filter( timestamp_comparator >= interval_data[interval]['start'] )
         rows = query.all()
 
         for plot_iter in plotter.plot_location(
             interval,
-            Model.timestamp.name,
+            Model.timestamp_key,
             [r.__dict__ for r in rows],
             Model.plot_indexes,
             multi=Model.multi,

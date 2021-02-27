@@ -45,16 +45,16 @@ class TestPlot( unittest.TestCase ):
         schema = self.fake.schema()
         rows = []
         row_ct = 20
+        timestamp_key = [c['name'] for c in schema if 'timestamp' in c][0]
         for i in range( row_ct ):
             row = self.fake.row( schema )
-            row['timestamp'] = datetime.now() - timedelta( hours=(row_ct - i) )
+            row[timestamp_key] = datetime.now() - timedelta( hours=(row_ct - i) )
             rows.append( row )
         indexes = {c['name']: c['index_as'] for c in schema if 'index_as' in c}
-        timestamp_name = [c['name'] for c in schema if 'timestamp' in c][0]
 
         for plot in self.plotter.plot_location(
             'day',
-            timestamp_name,
+            timestamp_key,
             rows,
             indexes,
             multi=False,
@@ -68,7 +68,7 @@ class TestPlot( unittest.TestCase ):
             )
             self.assertListEqual(
                 plot.times,
-                [r['timestamp'] for r in rows]
+                [r[timestamp_key] for r in rows]
             )
             self.assertEqual(
                 plot.title,
@@ -76,7 +76,7 @@ class TestPlot( unittest.TestCase ):
             )
             self.assertEqual(
                 plot.filename,
-                'test-plot-' + plot.index + '-day.png'
+                'test-plot-' + plot.index.replace( '_', '-' ) + '-day.png'
             )
 
             plot.plot()
@@ -114,7 +114,7 @@ class TestPlot( unittest.TestCase ):
                 )
                 self.assertListEqual(
                     plot.times[idx],
-                    [r['timestamp'] for r in rows]
+                    [r[timestamp_name] for r in rows]
                 )
             self.assertEqual(
                 plot.title,
@@ -122,7 +122,7 @@ class TestPlot( unittest.TestCase ):
             )
             self.assertEqual(
                 plot.filename,
-                'test-multi-plot-' + idx + '-day.png'
+                'test-multi-plot-' + idx.replace( '_', '-' ) + '-day.png'
             )
 
             plot.plot()

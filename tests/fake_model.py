@@ -55,8 +55,10 @@ class FakeModel( BaseProvider ):
             if fake_field['name'] not in [f['name'] for f in fields]:
                 fields.append( fake_field )
 
+        timestamp_names = ['ts', 'test_date', 'timestamp', 'time']
+
         fields.insert( 0, {
-            'name': 'timestamp',
+            'name': random.choice( timestamp_names ),
             'primary_key': True,
             'type': 'datetime',
             'timestamp': True,

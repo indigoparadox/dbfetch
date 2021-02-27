@@ -5,8 +5,12 @@ import sys
 import json
 import threading
 import random
-from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-from SocketServer import ThreadingMixIn
+try:
+    from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+    from SocketServer import ThreadingMixIn
+except ImportError:
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    from socketserver import ThreadingMixIn
 
 from faker import Faker
 
@@ -22,7 +26,7 @@ class FetchHandler( BaseHTTPRequestHandler ):
     def do_GET( self ):
         self.send_response( 200 )
         self.end_headers()
-        self.wfile.write( json.dumps( self.server.data ) )
+        self.wfile.write( json.dumps( self.server.data ).encode( 'utf-8' ) )
 
 class FetchServer( ThreadingMixIn, HTTPServer ):
 

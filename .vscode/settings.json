@@ -1,7 +1,7 @@
 {
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": true,
-    "python.pythonPath": "env3/bin/python",
+    "python.pythonPath": "/usr/bin/python",
     "python.testing.unittestArgs": [
         "-v",
         "-s",

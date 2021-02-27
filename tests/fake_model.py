@@ -100,11 +100,19 @@ class FakeModel( BaseProvider ):
                 fake_value = \
                     datetime.strftime( timestamp, '%Y-%m-%dTZ%H:%M:%S.%f' )
             elif 'int' == datetime_as:
-                fake_value = \
-                    int( (timestamp - datetime( 1970, 1, 1 )).total_seconds() )
+                if hasattr( timestamp, 'timestamp' ):
+                    fake_value = int( timestamp.timestamp() )
+                else:
+                    print( 'falling back to datetime diff' )
+                    fake_value = \
+                        int( (timestamp - datetime( 1970, 1, 1 )).total_seconds() )
             elif 'float' == datetime_as:
-                fake_value = float(
-                    (timestamp - datetime( 1970, 1, 1 )).total_seconds() )
+                if hasattr( timestamp, 'timestamp' ):
+                    fake_value = float( timestamp.timestamp() )
+                else:
+                    print( 'falling back to datetime diff' )
+                    fake_value = float(
+                        (timestamp - datetime( 1970, 1, 1 )).total_seconds() )
 
         return fake_value
 

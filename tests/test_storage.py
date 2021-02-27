@@ -64,9 +64,6 @@ class TestStorage( unittest.TestCase ):
         self.storage.session.add( OrigModel( **orig_row ) )
         self.storage.session.commit()
         
-        self.new_builder = DBModelBuilder( 'test_table' )
-        for field_def in orig_schema:
-            self.new_builder.add_column( field_def )
         new_row = self.fake.row( new_schema )
 
         # Make sure the new row can't be added yet.

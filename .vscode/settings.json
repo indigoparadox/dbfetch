@@ -1,7 +1,7 @@
 {
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": true,
-    "python.pythonPath": "/usr/local/bin/python2.7",
+    "python.pythonPath": "env3/bin/python",
     "python.testing.unittestArgs": [
         "-v",
         "-s",
@@ -11,5 +11,14 @@
     ],
     "python.testing.pytestEnabled": false,
     "python.testing.nosetestsEnabled": false,
-    "python.testing.unittestEnabled": true
+    "python.testing.unittestEnabled": true,
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/**": true,
+        "**/.hg/store/**": true,
+        "**/env/**": true,
+        "**/env2/**": true,
+        "**/env3/**": true
+    }
 }

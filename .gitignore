@@ -6,3 +6,6 @@
 .ssh
 *.db
 public_html
+env
+env2
+env3

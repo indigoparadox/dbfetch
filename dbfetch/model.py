@@ -52,6 +52,7 @@ class DBModelBuilder( object ):
         self.base = declarative_base()
         self.multi = True if 'multi' == index_plot else False
         self.timestamp_key = None
+        self.columns = {}
 
     @staticmethod
     def type_args( field_def, modify=True ):
@@ -65,6 +66,9 @@ class DBModelBuilder( object ):
         return type_args
 
     def add_column( self, field_def ):
+
+        if field_def['name'] not in self.columns:
+            self.columns[field_def['name']] = field_def.copy()
 
         field_def = field_def.copy()
 
@@ -144,9 +148,10 @@ class DBModelBuilder( object ):
         if not self.timestamp_key:
             raise DBModelTimestampException( 'no timestamp column' )
         FetchModel.timestamp_key = self.timestamp_key
-        FetchModel.transforms = self.transforms
+        FetchModel.transforms = self.transforms.copy()
         FetchModel.multi = self.multi
-        FetchModel.plot_indexes = self.plot_indexes
+        FetchModel.plot_indexes = self.plot_indexes.copy()
+        FetchModel.columns = self.columns.copy()
 
         return FetchModel
 

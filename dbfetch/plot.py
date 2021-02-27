@@ -75,6 +75,9 @@ class Plotter( object ):
                 self.plotter.public_html, self.filename )
             pyplot.savefig( out_path )
 
+        def close( self ):
+            pyplot.close()
+
     class MultiPlot( Plot ):
 
         ''' A special plot with multiple datasets. '''

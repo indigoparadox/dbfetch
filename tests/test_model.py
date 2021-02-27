@@ -116,7 +116,7 @@ class TestModel( unittest.TestCase ):
         self.assertEqual( self.builder.timestamp_key, Model.timestamp_key )
 
     def test_format_data( self ):
-        
+
         schema = self.fake.schema()
         row = self.fake.row( schema )
         timestamp_key = [c['name'] for c in schema if 'timestamp' in c][0]
@@ -200,3 +200,14 @@ class TestModel( unittest.TestCase ):
 
         for key_iter in row:
             self.assertEqual( obj.__dict__[key_iter], row[key_iter] )
+
+    def test_model_columns( self ):
+
+        schema = self.fake.schema( field_ct=6 )
+
+        for field_def in schema:
+            self.builder.add_column( field_def )
+
+        Model = self.builder.build_model()
+
+        self.assertDictEqual( {s['name']: s for s in schema}, Model.columns )

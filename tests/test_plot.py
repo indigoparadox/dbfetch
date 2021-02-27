@@ -81,6 +81,7 @@ class TestPlot( unittest.TestCase ):
 
             plot.plot()
             plot.save()
+            plot.close()
 
     def test_plot_multi( self ):
 

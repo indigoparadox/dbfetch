@@ -21,7 +21,7 @@ from dbfetch.storage import Storage, StorageDuplicateException
 
 def fetch( storage, Model, **kwargs ):
     fetcher = Fetcher()
-    for obj in fetcher.fetch_location( kwargs['url'], kwargs['index'] ):
+    for obj in fetcher.fetch_location( kwargs['url'], kwargs['location'] ):
         fmt_obj = Model.format_fetched_object( obj )
         try:
             storage.store( fmt_obj, Model, Model.timestamp_key )
@@ -48,6 +48,7 @@ def plot( storage, Model, **kwargs ):
 
             plot_iter.plot()
             plot_iter.save()
+            plot_iter.close()
 
 def main():
 
@@ -123,8 +124,15 @@ def main():
                         dict( config.items(
                             '{}-location-{}'.format( module_key, location ) ) ) )
                     location_args['location'] = location
-                    model = DBModelBuilder.import_model( module_key, storage.db, args.models )
-                    args.method( storage, model, **location_args )
+                    Model = DBModelBuilder.import_model( module_key, storage.db, args.models )
+
+                    # Check for new columns.
+                    # TODO: Maybe dynamically detect new columns from fetch?
+                    for col_name in Model.columns:
+                        storage.add_column_if_not_exist(
+                            Model.__tablename__, Model.columns[col_name] )
+
+                    args.method( storage, Model, **location_args )
 
     except (NoSectionError, NoOptionError) as e:
         logger.error( 'invalid module config: %s', e )

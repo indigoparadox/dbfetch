@@ -38,7 +38,7 @@ class Storage( object ):
         self._db_url = value
 
     def setup( self ):
-        self.logger.debug( 'connecting t ' )
+        self.logger.debug( 'connecting to database: %s', self._db_url )
         self.db = self.engine.connect()
         Session = sessionmaker()
         Session.configure( bind=self.db )
@@ -75,8 +75,6 @@ class Storage( object ):
 
     def store( self, data, model, f_col_name ):
 
-        #self.logger.debug( 'checking for %s in %s...',
-        #    criteria, filter_col )
         if not self.session.query( model ) \
         .filter( getattr( model, f_col_name ).__eq__( data[f_col_name] )
         ).scalar():

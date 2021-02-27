@@ -2,7 +2,11 @@
 
 import argparse
 import sys
-from ConfigParser import RawConfigParser, NoSectionError, NoOptionError
+from configparser import \
+    RawConfigParser, \
+    NoSectionError, \
+    NoOptionError
+from smtplib import SMTPServerDisconnected
 
 import logging
 from logging.handlers import SMTPHandler
@@ -80,8 +84,12 @@ def main():
             subject='[dbfetch] Critical Error' )
         mail_handler.setLevel( logging.ERROR )
         logging.getLogger( None ).addHandler( mail_handler )
-    except Exception as e:
-        logger.debug( 'error setting up mail handler: %s', e )
+    except SMTPServerDisconnected as e:
+        logger.debug( 'unable to connect to mail server: %s', e )
+    except NoSectionError as e:
+        logger.debug( 'mail not configured: %s', e )
+    except NoOptionError as e:
+        logger.debug( 'mail not configured: %s', e )
 
     if args.verbose:
         logger.error( 'testing critical error notification...' )

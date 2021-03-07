@@ -50,7 +50,7 @@ Now refactored so the models are defined in YAML files. No module-specific code 
 
 ## Common Module Configuration
 
-### \[<module name>\] (e.g. \[awair\])
+### \[\<module name\>\] (e.g. \[awair\])
 
 * connection
 
@@ -64,7 +64,7 @@ Now refactored so the models are defined in YAML files. No module-specific code 
 
   Directory in which plotted graph images should be saved.
 
-### \[<module name>-location-<module index>\]
+### \[\<module name\>-location-\<module index\>\]
 
 * title
 

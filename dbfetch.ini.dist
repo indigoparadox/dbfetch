@@ -1,0 +1,39 @@
+
+[smtp]
+server = 
+user =
+password =
+from =
+to = 
+
+#[pmsa]
+#connection = sqlite:///./test.db
+#locations = 1
+#public_html = ./public_html
+
+#[pmsa-location-1]
+#title = Particulate Matter
+#output = pmsa
+#url =
+
+#[awair]
+#connection = sqlite:///./test.db
+#locations = 1
+#public_html = ./public_html
+
+#[awair-location-1]
+#title = Awair Device
+#output = awair
+#url = http://awair.local/air-data/latest
+#tz_offset = -5
+
+[covid]
+connection = sqlite:///./test.db
+locations = 1
+public_html = ./public_html
+
+[covid-location-1]
+title = NY State COVID-19 New Positive Tests
+url = https://health.data.ny.gov/resource/xts6-rm47.json
+output = covid
+

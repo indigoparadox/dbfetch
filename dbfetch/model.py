@@ -115,7 +115,8 @@ class DBModelBuilder( object ):
         elif isinstance( transform, str ):
             t_path = transform.split( '.' )
         else:
-            raise Exception( 'invalid transform specified: {}'.format( e ) )
+            raise TypeError(
+                'invalid transform specified: {}'.format( transform ) )
 
         t_func = None
 
@@ -171,10 +172,9 @@ class DBModelBuilder( object ):
         self.base.metadata.create_all( db )
 
     @staticmethod
-    def import_model( module_key, db, models_path ):
+    def import_model( model_path, db ):
 
         model_def = None
-        model_path = os.path.join( models_path, '{}.yml'.format( module_key ) )
         with open( model_path, 'r' ) as m_file:
             model_def = yaml.load( m_file )
 

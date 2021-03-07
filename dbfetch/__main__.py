@@ -2,6 +2,8 @@
 
 import argparse
 import sys
+import socket
+import os
 from configparser import \
     RawConfigParser, \
     NoSectionError, \
@@ -14,10 +16,17 @@ from datetime import datetime
 
 from sqlalchemy.exc import ArgumentError
 
+from dbfetch.examples import copy_examples_to
 from dbfetch.model import DBModelBuilder
 from dbfetch.plot import Plotter
 from dbfetch.fetch import Fetcher
 from dbfetch.storage import Storage, StorageDuplicateException
+
+CONFIG_DIRS = [
+    '/etc/dbfetch',
+    os.path.join( os.path.expanduser( '~' ), '.dbfetch' )
+    #os.path.join( os.curdir, '.dbfetch' )
+]
 
 def fetch( storage, Model, **kwargs ):
     fetcher = Fetcher()
@@ -25,8 +34,8 @@ def fetch( storage, Model, **kwargs ):
         fmt_obj = Model.format_fetched_object( obj )
         try:
             storage.store( fmt_obj, Model, Model.timestamp_key )
-        except StorageDuplicateException as e:
-            storage.log_duplicate( e )
+        except StorageDuplicateException as exc:
+            storage.log_duplicate( exc )
 
 def plot( storage, Model, **kwargs ):
     plotter = Plotter( multi=Model.multi, **kwargs )
@@ -59,18 +68,18 @@ def main():
 
     sp_fetch = sub_p.add_parser( 'fetch', help='fetches data and stores it' )
     sp_fetch.set_defaults( method=fetch )
-    sp_fetch.add_argument( 'modules', action='store', nargs='?',
-        help='select which modules to run, separated by commas' )
+    sp_fetch.add_argument( 'models', action='store', nargs='?',
+        help='select which models to run, separated by commas' )
 
     sp_plot = sub_p.add_parser( 'plot', help='creates data graphic' )
     sp_plot.set_defaults( method=plot )
-    sp_plot.add_argument( 'modules', action='store', nargs='?',
-        help='select which modules to run, separated by commas' )
+    sp_plot.add_argument( 'models', action='store', nargs='?',
+        help='select which models to run, separated by commas' )
 
     parser.add_argument( '-v', '--verbose', action='store_true' )
 
     parser.add_argument(
-        '-c', '--config', action='store', default='dbfetch.ini',
+        '-c', '--config', action='store',
         help='specify config file; default is ' + \
             'dbfetch.ini in current directory' )
 
@@ -93,7 +102,29 @@ def main():
 
     # Setup config.
     config = RawConfigParser()
-    with open( args.config ) as cfg_fp:
+    config_path = args.config
+    if not config_path:
+        for path_iter in CONFIG_DIRS:
+            path_test = os.path.join( path_iter, 'dbfetch.ini' )
+            logger.debug( 'searching for config in %s...', path_iter )
+            if os.path.exists( path_test ):
+                config_path = path_test
+                break
+    if not config_path:
+        for path_iter in CONFIG_DIRS:
+            logger.debug( 'try to create config in %s...', path_iter )
+            try:
+                copy_examples_to( path_iter )
+            except IOError as exc:
+                logger.debug( 'failed: %s', exc )
+                continue
+            logger.info( 'created new config in %s', path_iter )
+            logger.info( 'modify %s to continue',
+                os.path.join( path_iter, 'dbfetch.ini' ) )
+            logger.info( 'see documentation for more information' )
+            sys.exit( 1 )
+
+    with open( config_path ) as cfg_fp:
         config.readfp( cfg_fp )
 
     try:
@@ -104,27 +135,45 @@ def main():
             subject='[dbfetch] Critical Error' )
         mail_handler.setLevel( logging.ERROR )
         logging.getLogger( None ).addHandler( mail_handler )
-    except SMTPServerDisconnected as e:
-        logger.debug( 'unable to connect to mail server: %s', e )
-    except NoSectionError as e:
-        logger.debug( 'mail not configured: %s', e )
-    except NoOptionError as e:
-        logger.debug( 'mail not configured: %s', e )
+        #logger.error( 'testing critical error notification...' )
+    except (SMTPServerDisconnected,
+    NoSectionError,
+    NoOptionError) as exc:
+        #logging.getLogger( None ).removeHandler( mail_handler )
+        logger.debug( 'unable to connect to mail server: %s', exc )
 
-    if args.verbose:
-        logger.error( 'testing critical error notification...' )
+    if not args.models:
+        logger.error( 'no models specified' )
+        sys.exit( 1 )
 
-    try:
-        for module_key in args.modules.split( ',' ):
-            module_cfg = dict( config.items( module_key ) )
-            for location in module_cfg['locations']:
-                with Storage( module_cfg['connection'] ) as storage:
-                    location_args = module_cfg.copy()
+    for model_key in args.models.split( ',' ):
+        try:
+            model_cfg = dict( config.items( model_key ) )
+        except (NoOptionError, NoSectionError):
+            logger.error( 'missing model configuration for %s', model_key )
+            continue
+        Model = None
+
+        try:
+            with Storage( model_cfg['connection'] ) as storage:
+                for path_iter in CONFIG_DIRS:
+                    model_path = \
+                        os.path.join( path_iter, 'models',
+                            '{}.yml'.format( model_key ) )
+                    if os.path.exists( model_path ):
+                        Model = DBModelBuilder.import_model(
+                            model_path, storage.db )
+                        break
+                if not Model:
+                    logger.error( 'unable to find %s.yml', model_key )
+                    continue
+
+                for location in model_cfg['locations']:
+                    location_args = model_cfg.copy()
                     location_args.update(
                         dict( config.items(
-                            '{}-location-{}'.format( module_key, location ) ) ) )
+                            '{}-location-{}'.format( model_key, location ) ) ) )
                     location_args['location'] = location
-                    Model = DBModelBuilder.import_model( module_key, storage.db, args.models )
 
                     # Check for new columns.
                     # TODO: Maybe dynamically detect new columns from fetch?
@@ -133,11 +182,9 @@ def main():
                             Model.__tablename__, Model.columns[col_name] )
 
                     args.method( storage, Model, **location_args )
-
-    except (NoSectionError, NoOptionError) as e:
-        logger.error( 'invalid module config: %s', e )
-    except ArgumentError as e:
-        logger.error( 'database error: %s', e )
+        except ArgumentError as exc:
+            logger.error( 'database error: %s', exc )
+            continue
 
 if '__main__' == __name__:
     main()

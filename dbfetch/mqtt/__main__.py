@@ -21,7 +21,7 @@ def on_message( client, userdata, msg ):
     global db_url
     logger = logging.getLogger( 'mqtt' )
     try:
-        logger.info( 'connecting to %s as %s, database: %s',
+        logger.debug( 'connecting to %s as %s, database: %s',
             db_url.hostname,
             db_url.username,
             db_url.path[1:] )
@@ -45,14 +45,14 @@ def stop( client ):
     client.disconnect()
     client.loop_stop()
 
-def client_connect( client, config ):
+def client_connect( client, config, verbose ):
     logger = logging.getLogger( 'mqtt' )
-    client.loop_start()
-    client.enable_logger()
+    if verbose:
+        client.enable_logger()
     client.tls_set( config['mqtt']['ca'], tls_version=ssl.PROTOCOL_TLSv1_2 )
     client.on_connect = on_connected
     client.on_message = on_message
-    logger.info( 'connecting to MQTT at %s:%d...',
+    logger.debug( 'connecting to MQTT at %s:%d...',
         config['mqtt']['host'], config.getint( 'mqtt', 'port' ) )
     client.username_pw_set(
         config['mqtt']['user'], config['mqtt']['password'] )
@@ -66,9 +66,11 @@ def main():
 
     parser.add_argument( '-c', '--config-file', default='/etc/dbfetch_mqtt.ini' )
 
+    parser.add_argument( '-v', '--verbose' )
+
     args = parser.parse_args()
 
-    logging.basicConfig( level=logging.INFO )
+    logging.basicConfig( level=logging.DEBUG if args.verbose else logging.INFO )
     logger = logging.getLogger( 'main' )
 
     config = configparser.RawConfigParser()
@@ -80,10 +82,8 @@ def main():
         topics.append( config[location]['topic'] )
 
     client = mqtt_client.Client( config['mqtt']['uid'], True, None, mqtt_client.MQTTv31 )
-    client_connect( client, config )
-
-    while True:
-        pass
+    client_connect( client, config, args.verbose )
+    client.loop_forever()
 
 if '__main__' == __name__:
     main()

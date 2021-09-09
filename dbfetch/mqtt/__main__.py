@@ -8,7 +8,7 @@ from paho.mqtt import client as mqtt_client
 from urllib.parse import urlparse
 
 topics = []
-conn = None
+db_url = None
 
 def on_connected( client, userdata, flags, rc ):
     logger = logging.getLogger( 'mqtt' )
@@ -18,10 +18,26 @@ def on_connected( client, userdata, flags, rc ):
         client.subscribe( topic )
 
 def on_message( client, userdata, msg ):
-    with conn:
-        with conn.cursor() as cursor:
-            sql = 'INSERT INTO `mqtt` (`topic`, `value`) VALUES (%s, %d)'
-            cursor.execute( msg.topic, int( msg.payload ) )
+    global db_url
+    logger = logging.getLogger( 'mqtt' )
+    try:
+        logger.info( 'connecting to %s as %s, database: %s',
+            db_url.hostname,
+            db_url.username,
+            db_url.path[1:] )
+        conn = pymysql.connect(
+            host=db_url.hostname,
+            user=db_url.username,
+            password=db_url.password,
+            database=db_url.path[1:],
+            cursorclass=pymysql.cursors.DictCursor )
+        cursor = conn.cursor()
+        sql = 'INSERT INTO `mqtt` (`topic`, `value`) VALUES (%s, %s)'
+        cursor.execute( sql, (msg.topic, msg.payload ) )
+        conn.commit()
+        conn.close()
+    except Exception as ex:
+        logger.exception( ex )
 
 def stop( client ):
     logger = logging.getLogger( 'mqtt' )
@@ -44,6 +60,8 @@ def client_connect( client, config ):
 
 def main():
 
+    global db_url
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument( '-c', '--config-file', default='/etc/dbfetch_mqtt.ini' )
@@ -57,12 +75,6 @@ def main():
     config.read( args.config_file )
 
     db_url = urlparse( config['mqtt']['connection'] )
-    conn = pymysql.connect(
-        host=db_url.hostname,
-        user=db_url.username,
-        password=db_url.password,
-        database=db_url.path[1:]
-    )
 
     for location in config['mqtt']['locations'].split( ',' ):
         topics.append( config[location]['topic'] )

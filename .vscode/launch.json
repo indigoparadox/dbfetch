@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: MQTT",
+            "type": "python",
+            "request": "launch",
+            "module": "dbfetch.mqtt",
+            "console": "integratedTerminal",
+            "args": []
+        },
+        {
             "name": "Python: fetch",
             "type": "python",
             "request": "launch",

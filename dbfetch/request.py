@@ -3,7 +3,6 @@ import logging
 import requests
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
-import pprint
 
 class Requester( object ):
 
@@ -111,8 +110,6 @@ class Requester( object ):
             for key in json_obj.keys():
                 if not key in self.fields:
                     del json_obj[key]
-
-        pprint.pprint( json_obj )
 
         return json_obj
 

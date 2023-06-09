@@ -66,6 +66,9 @@ class DBModelBuilder( object ):
 
     def add_column( self, field_def ):
 
+        ''' Dynamically add a column to the database model as part of building
+            it, typically from a YAML model definition. '''
+
         if field_def['name'] not in self.columns:
             self.columns[field_def['name']] = field_def.copy()
 
@@ -82,10 +85,13 @@ class DBModelBuilder( object ):
             del field_def['index_as']
         if 'transformations' in field_def:
             for t_iter in field_def['transformations']:
+                self.logger.debug( 'field %s adding transformation: %s',
+                    field_def['name'], t_iter )
                 self.add_transformation( field_def['name'], t_iter )
             del field_def['transformations']
         if 'timestamp' in field_def:
             if field_def['timestamp']:
+                self.logger.debug( 'field %s is timestamp!', field_def['name'] )
                 is_timestamp = True
             del field_def['timestamp']
 

@@ -1,15 +1,15 @@
 ---
 tablename: waqi
-timestamp: data_debug_sync
+timestamp: data_time_s
 options:
    delete_undef: true
 transformations:
-  data_debug_sync:
-  - Requester.format_date
   data:
   - Requester.format_flatten
-  data_debug:
+  data_time:
   - Requester.format_flatten
+  data_time_s:
+  - Requester.format_date
   data_iaqi:
   - Requester.format_flatten
   data_iaqi_co:
@@ -29,7 +29,7 @@ transformations:
   data_iaqi_wg:
   - Requester.format_flatten
 fields:
-  data_debug_sync:
+  data_time_s:
     type: datetime
     primary_key: true
   location:

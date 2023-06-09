@@ -29,9 +29,18 @@ class Requester( object ):
     def format_date( obj, key ):
         logger = logging.getLogger( 'request.date' )
         logger.debug( 'formatting date: %s', obj[key] )
-        return datetime.strptime(
-            obj[key].replace( 'Z', '' ), '%Y-%m-%dT%H:%M:%S.%f' )
-    
+        try:
+            date_fmt = '%Y-%m-%dT%H:%M:%S.%f'
+            logger.debug( 'trying format %s...', date_fmt )
+            date_out = datetime.strptime(
+                obj[key].replace( 'Z', '' ), date_fmt )
+        except ValueError:
+            date_fmt = '%Y-%m-%d %H:%M:%S'
+            logger.debug( 'trying format %s...', date_fmt )
+            date_out = datetime.strptime(
+                obj[key].replace( 'Z', '' ), date_fmt )
+        return date_out
+        
     @staticmethod
     def format_flatten( obj, key ):
         
@@ -39,6 +48,16 @@ class Requester( object ):
         old key appended to the keys of the inner keys. '''
 
         logger = logging.getLogger( 'request.flatten' )
+
+        # This is a hack because when we use format_flatten once, it's the
+        # only transformation that will ever get executed again? Why?!
+        if isinstance( obj[key], unicode ):
+            logger.debug( 'shunting unicode "%s" to date formatter!',
+                obj[key] )
+            return Requester.format_date( obj, key )
+        elif isinstance( obj[key], datetime ):
+            logger.debug( 'tried to double-parse date?' )
+            return obj[key]
 
         #if isinstance( obj[key], object ):
         logger.debug( 'flattening object %s...', key )
@@ -71,7 +90,8 @@ class Requester( object ):
                     if key in self.modifiers:
                         logger.debug( 'replacing %s (%s) using %s',
                             key, json_obj[key], self.modifiers[key] )
-                        json_obj[key] = self.modifiers[key]( json_obj, key )
+                        new_val = self.modifiers[key]( json_obj, key )
+                        json_obj[key] = new_val
 
                 # We've iterated through the keys without triggering a re-iter!
                 logger.debug( 'iteration complete!' )

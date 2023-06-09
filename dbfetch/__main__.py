@@ -68,12 +68,12 @@ def main():
 
     sp_fetch = sub_p.add_parser( 'fetch', help='fetches data and stores it' )
     sp_fetch.set_defaults( method=fetch )
-    sp_fetch.add_argument( 'models', action='store', nargs='?',
+    sp_fetch.add_argument( 'fetch_models', action='store', nargs='?',
         help='select which models to run, separated by commas' )
 
     sp_plot = sub_p.add_parser( 'plot', help='creates data graphic' )
     sp_plot.set_defaults( method=plot )
-    sp_plot.add_argument( 'models', action='store', nargs='?',
+    sp_plot.add_argument( 'fetch_models', action='store', nargs='?',
         help='select which models to run, separated by commas' )
 
     parser.add_argument( '-v', '--verbose', action='store_true' )
@@ -142,11 +142,11 @@ def main():
         #logging.getLogger( None ).removeHandler( mail_handler )
         logger.debug( 'unable to connect to mail server: %s', exc )
 
-    if not args.models:
+    if not args.fetch_models:
         logger.error( 'no models specified' )
         sys.exit( 1 )
 
-    for model_key in args.models.split( ',' ):
+    for model_key in args.fetch_models.split( ',' ):
         try:
             model_cfg = dict( config.items( model_key ) )
         except (NoOptionError, NoSectionError):
@@ -156,14 +156,21 @@ def main():
 
         try:
             with Storage( model_cfg['connection'] ) as storage:
-                for path_iter in CONFIG_DIRS:
-                    model_path = \
-                        os.path.join( path_iter, 'models',
-                            '{}.yml'.format( model_key ) )
+                if args.models:
+                    model_path = os.path.join( args.models,
+                        '{}.yml'.format( model_key ) )
                     if os.path.exists( model_path ):
                         Model = DBModelBuilder.import_model(
                             model_path, storage.db )
-                        break
+                else:
+                    # Check each config dir for a models dir.
+                    for path_iter in CONFIG_DIRS:
+                        model_path = os.path.join( path_iter, 'models',
+                            '{}.yml'.format( model_key ) )
+                        if os.path.exists( model_path ):
+                            Model = DBModelBuilder.import_model(
+                                model_path, storage.db )
+                            break
                 if not Model:
                     logger.error( 'unable to find %s.yml', model_key )
                     continue

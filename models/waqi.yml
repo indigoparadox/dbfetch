@@ -1,6 +1,18 @@
 ---
 tablename: waqi
 timestamp: data_time_s
+index_plot: combined
+title: Air Quality
+indexes:
+  data_iaqi_co_v:
+    field: data_iaqi_co_v
+    label: CO
+  data_iaqi_o3_v:
+    field: data_iaqi_o3_v
+    label: Ozone
+  data_iaqi_pm25_v:
+    field: data_iaqi_pm25_v
+    label: Particles < 2.5um
 options:
    delete_undef: true
 transformations:

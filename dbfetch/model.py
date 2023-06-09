@@ -9,7 +9,41 @@ from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 from dbfetch.request import Requester
 from dbfetch.plot import Plotter
-    
+
+def create_model( db, model_def ):
+
+    ''' Create the given table in the database with its primary key if it does
+    not exist. '''
+
+    logger = logging.getLogger( 'model.create' )
+
+    inspector = Inspector.from_engine( db )
+
+    # Build the CREATE TABLE parameters for just the primary keys.
+    # Other fields can be added in import_model() later.
+    table_field_defs = []
+    table_keys = []
+    for field_key in model_def['fields']:
+        field_def = model_def['fields'][field_key]
+        if 'primary_key' in field_def and field_def['primary_key']:
+
+            # We don't handle modifiers here so only allow simple types for now.
+            assert( 'datetime' == field_def['type'] or \
+                'int' == field_def['type'] )
+
+            table_field_defs.append( '{} {} NOT NULL'.format(
+                field_key, field_def['type'] ) )
+            table_keys.append( field_key )
+
+    table_field_defs.append(
+        'PRIMARY KEY ({})'.format( ','.join( table_keys ) ) )
+
+    db.execute( 'CREATE TABLE {} ({})'.format(
+        model_def['tablename'], ','.join( table_field_defs ) ) )
+
+    logger.info( 'table %s created with primary keys: %s',
+        model_def['tablename'], ','.join( table_keys ) )
+
 def import_model( module_key, db, models_path ):
 
     logger = logging.getLogger( 'model.import' )
@@ -21,6 +55,12 @@ def import_model( module_key, db, models_path ):
     model_path = os.path.join( models_path, '{}.yml'.format( module_key ) )
     with open( model_path, 'r' ) as m_file:
         model_def = yaml.load( m_file )
+
+    if not model_def['tablename'] in inspector.get_table_names():
+        logger.info(
+            'database table %s does not exist! attempting to create...',
+            model_def['tablename'] )
+        create_model( db, model_def )
 
     model_fields = {}
     for field_key in model_def['fields']:

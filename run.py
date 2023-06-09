@@ -22,11 +22,19 @@ def fetch_mod( module_key, module, args, config, dbc ):
     locations = config.get( module_key, 'locations' ).split( ',' )
     for loc in locations:
         logger.debug( 'checking location: %s...', loc )
+       
+        loc_config_key = '{}-location-{}'.format( module_key, loc )
+
+        try:
+            module['options']['ssl_verify'] = \
+                config.get( loc_config_key, 'ssl_verify' )
+        except NoOptionError:
+            module['options']['ssl_verify'] = True
+
         req = Requester( dbc,
             module['transformations'], module['fields'], module['options'] )
         json = Requester.request(
-            config.get( '{}-location-{}'.format(
-                module_key, loc ), 'url' ) )
+            config.get( loc_config_key, 'url' ), module['options'] )
         for obj in req.format_json( json ):
             obj['location'] = loc
             criteria = {module['timestamp']: obj[module['timestamp']]}

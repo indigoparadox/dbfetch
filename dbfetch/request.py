@@ -21,8 +21,14 @@ class Requester( object ):
             options['delete_undef'] if 'delete_undef' in options else False
 
     @staticmethod
-    def request( url ):
-        r = requests.get( url )
+    def request( url, options ):
+        logger = logging.getLogger( 'request.request' )
+        r = None
+        if 'ssl_verify' in options and 'false' == options['ssl_verify']:
+            logger.warning( 'fetching without SSL verify!' )
+            r = requests.get( url, verify=False )
+        else:
+            r = requests.get( url )
         return r.json()
 
     @staticmethod

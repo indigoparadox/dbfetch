@@ -29,7 +29,7 @@ def import_model( module_key, db, models_path ):
         # The sz is special since it gets passed to the type.
         type_args = []
         if 'sz' in field_def:
-            type_args.append( int( field_def['sz'] ) )
+            type_args.append( str( field_def['sz'] ) )
             field_def.pop( 'sz' )
 
         db_columns = [c['name'] for c in inspector.get_columns(

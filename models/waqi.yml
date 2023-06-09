@@ -1,0 +1,53 @@
+---
+tablename: waqi
+timestamp: data_debug_sync
+options:
+   delete_undef: true
+transformations:
+  data_debug_sync:
+  - Requester.format_date
+  data:
+  - Requester.format_flatten
+  data_debug:
+  - Requester.format_flatten
+  data_iaqi:
+  - Requester.format_flatten
+  data_iaqi_co:
+  - Requester.format_flatten
+  data_iaqi_h:
+  - Requester.format_flatten
+  data_iaqi_o3:
+  - Requester.format_flatten
+  data_iaqi_p:
+  - Requester.format_flatten
+  data_iaqi_pm25:
+  - Requester.format_flatten
+  data_iaqi_t:
+  - Requester.format_flatten
+  data_iaqi_w:
+  - Requester.format_flatten
+  data_iaqi_wg:
+  - Requester.format_flatten
+fields:
+  data_debug_sync:
+    type: datetime
+    primary_key: true
+  location:
+    type: int
+    primary_key: true
+  data_iaqi_co_v:
+    type: int
+  data_iaqi_h_v:
+    type: int
+  data_iaqi_o3_v:
+    type: int
+  data_iaqi_p_v:
+    type: int
+  data_iaqi_pm25_v:
+    type: int
+  data_iaqi_t_v:
+    type: int
+  data_iaqi_w_v:
+    type: int
+  data_iaqi_wg_v:
+    type: int

@@ -2,6 +2,7 @@
 tablename: covid
 timestamp: test_date
 index_plot: combined
+options: {}
 title: COVID-19 New Positive Tests
 indexes:
   new_positives:

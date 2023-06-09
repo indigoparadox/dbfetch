@@ -72,14 +72,16 @@ def import_model( module_key, db, models_path ):
     BaseModel.metadata.create_all( db )
 
     # Parse transformations.
-    t_func_out = lambda o: o
+    t_func_out = lambda o, k: o[k]
     for t_key in model_def['transformations']:
         for t_iter in model_def['transformations'][t_key]:
+
             t_path = t_iter.split( '.' )
 
             # Descend from root element in globals() to a method/class (if any).
             if 'int' == t_path[0]:
-                t_func_out = lambda o: int( o )
+                t_func_out = lambda o, k: int( o[k] )
+                logger.debug( 'adding %s transformation: int', t_key )
             else:
                 t_func = globals()[t_path[0]]
                 t_path.pop( 0 )
@@ -87,11 +89,13 @@ def import_model( module_key, db, models_path ):
                     t_func = getattr( t_func, t_path[0] )
                     t_path.pop( 0 )
 
-                t_func_out = lambda o: t_func( o )
+                t_func_out = lambda o, k: t_func( o, k )
+                logger.debug( 'adding %s transformation: %s (y: %s)',
+                    t_key, t_func, t_func_out )
         model_def['transformations'][t_key] = t_func_out
 
     # Tidy up parsed fields and attach resulting model.
-    model_def.pop( 'fields' )
+    #model_def.pop( 'fields' )
     model_def.pop( 'tablename' )
     model_def['model'] = model
 

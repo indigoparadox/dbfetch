@@ -22,7 +22,8 @@ def fetch_mod( module_key, module, args, config, dbc ):
     locations = config.get( module_key, 'locations' ).split( ',' )
     for loc in locations:
         logger.debug( 'checking location: %s...', loc )
-        req = Requester( dbc, module['transformations'] )
+        req = Requester( dbc,
+            module['transformations'], module['fields'], module['options'] )
         json = Requester.request(
             config.get( '{}-location-{}'.format(
                 module_key, loc ), 'url' ) )

@@ -2,6 +2,7 @@
 tablename: awair
 timestamp: timestamp
 index_plot: single
+options: {}
 indexes:
   co2:
     field: co2

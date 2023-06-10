@@ -1,0 +1,17 @@
+---
+tablename: ha
+timestamp: last_updated
+index_plot: single
+options:
+   delete_undef: true
+transformations:
+  last_updated:
+  - Requester.format_date
+fields:
+  location:
+    type: int
+  last_updated:
+    type: datetime
+    primary_key: true
+  state:
+    type: int

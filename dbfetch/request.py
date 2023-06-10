@@ -23,27 +23,43 @@ class Requester( object ):
     def request( url, options ):
         logger = logging.getLogger( 'request.request' )
         r = None
-        if 'ssl_verify' in options and 'false' == options['ssl_verify']:
+
+        headers = {}
+        if options['bearer']:
+            headers['Authorization'] = 'Bearer {}'.format( options['bearer'] )
+
+        if 'false' == options['ssl_verify']:
             logger.warning( 'fetching without SSL verify!' )
-            r = requests.get( url, verify=False )
+            r = requests.get( url, headers=headers, verify=False )
         else:
-            r = requests.get( url )
-        return r.json()
+            r = requests.get( url, headers=headers )
+
+        # Parse JSON if successful, or fail if not.
+        if 200 == r.status_code:
+            return r.json()
+        else:
+            raise Exception( r.text )
 
     @staticmethod
     def format_date( obj, key ):
         logger = logging.getLogger( 'request.date' )
         logger.debug( 'formatting date: %s', obj[key] )
         try:
-            date_fmt = '%Y-%m-%dT%H:%M:%S.%f'
+            date_fmt = '%Y-%m-%dT%H:%M:%S.%f+00:00'
             logger.debug( 'trying format %s...', date_fmt )
             date_out = datetime.strptime(
                 obj[key].replace( 'Z', '' ), date_fmt )
         except ValueError:
-            date_fmt = '%Y-%m-%d %H:%M:%S'
-            logger.debug( 'trying format %s...', date_fmt )
-            date_out = datetime.strptime(
-                obj[key].replace( 'Z', '' ), date_fmt )
+            try:
+                date_fmt = '%Y-%m-%dT%H:%M:%S.%f'
+                logger.debug( 'trying format %s...', date_fmt )
+                date_out = datetime.strptime(
+                    obj[key].replace( 'Z', '' ), date_fmt )
+            except ValueError:
+                date_fmt = '%Y-%m-%d %H:%M:%S'
+                logger.debug( 'trying format %s...', date_fmt )
+                date_out = datetime.strptime(
+                    obj[key].replace( 'Z', '' ), date_fmt )
         return date_out
         
     @staticmethod

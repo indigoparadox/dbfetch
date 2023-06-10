@@ -15,6 +15,19 @@ from dbfetch.model import import_model
 from dbfetch.plot import Plotter
 from dbfetch.request import Requester
 
+def fetch_set_ini_option( module, config, loc_config_key, key, default ):
+
+    ''' Try to set option from ini file, and set it to default if it's not
+    present. '''
+
+    logger = logging.getLogger( 'fetch.set_ini' )
+
+    try:
+        module['options'][key] = config.get( loc_config_key, key )
+    except NoOptionError:
+        logger.debug( 'defaulting to %s = %s', key, default )
+        module['options'][key] = default
+
 def fetch_mod( module_key, module, args, config, dbc ):
 
     logger = logging.getLogger( 'fetch.{}'.format( module_key ) )
@@ -25,11 +38,11 @@ def fetch_mod( module_key, module, args, config, dbc ):
        
         loc_config_key = '{}-location-{}'.format( module_key, loc )
 
-        try:
-            module['options']['ssl_verify'] = \
-                config.get( loc_config_key, 'ssl_verify' )
-        except NoOptionError:
-            module['options']['ssl_verify'] = True
+        # Try to set option from ini file: ssl_verify
+        fetch_set_ini_option(
+            module, config, loc_config_key, 'ssl_verify', True )
+        fetch_set_ini_option(
+            module, config, loc_config_key, 'bearer', None )
 
         req = Requester( dbc,
             module['transformations'], module['fields'], module['options'] )

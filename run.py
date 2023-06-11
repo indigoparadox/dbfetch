@@ -24,10 +24,12 @@ from urlparse import urlparse
 def mqtt_on_connect( client, userdata, flags, rc ):
     logger = logging.getLogger( 'fetch.mqtt' )
 
-    logger.debug(
-        'connected, publishing %s to %s...', userdata[1], userdata[0] )
+    msg_body = userdata[1].replace( '"', '\\"' )
 
-    client.publish( userdata[0][1:], userdata[1] )
+    logger.debug(
+        'connected, publishing %s to %s...', msg_body, userdata[0] )
+
+    client.publish( userdata[0][1:], msg_body )
 
     # Publish complete! Disconnect to terminate loop.
     client.disconnect()

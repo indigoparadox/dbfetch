@@ -4,6 +4,8 @@ import argparse
 import logging
 import sys
 import os
+import ssl
+import json
 from ConfigParser import RawConfigParser, NoSectionError, NoOptionError
 from datetime import datetime, timedelta
 
@@ -14,6 +16,37 @@ from sqlalchemy.orm import sessionmaker
 from dbfetch.model import import_model
 from dbfetch.plot import Plotter
 from dbfetch.request import Requester
+
+import paho.mqtt.client as mqtt
+
+from urlparse import urlparse
+
+def mqtt_on_connect( client, userdata, flags, rc ):
+    logger = logging.getLogger( 'fetch.mqtt' )
+
+    logger.debug(
+        'connected, publishing %s to %s...', userdata[1], userdata[0] )
+
+    client.publish( userdata[0][1:], userdata[1] )
+
+    # Publish complete! Disconnect to terminate loop.
+    client.disconnect()
+
+def mqtt_connect_and_send( mqtt_url, mqtt_ca, data ):
+
+    logger = logging.getLogger( 'fetch.mqtt' )
+
+    mqtt_addr = urlparse( mqtt_url )
+    mqtt_client = mqtt.Client( userdata=(mqtt_addr.path, data) )
+    
+    if 'mqtts' == mqtt_addr.scheme:
+        mqtt_client.tls_set( mqtt_ca, tls_version=ssl.PROTOCOL_TLSv1_2 )
+    mqtt_client.username_pw_set( mqtt_addr.username, mqtt_addr.password )
+    mqtt_client.on_connect = mqtt_on_connect
+
+    logger.debug( 'connecting to %s...', mqtt_addr.hostname )
+    mqtt_client.connect( mqtt_addr.hostname )
+    mqtt_client.loop_forever()
 
 def fetch_set_ini_option( module, config, loc_config_key, key, default ):
 
@@ -43,14 +76,24 @@ def fetch_mod( module_key, module, args, config, dbc ):
             module, config, loc_config_key, 'ssl_verify', True )
         fetch_set_ini_option(
             module, config, loc_config_key, 'bearer', None )
+        fetch_set_ini_option(
+            module, config, loc_config_key, 'mqtt', None )
+        fetch_set_ini_option(
+            module, config, loc_config_key, 'mqtt_ca', None )
 
         req = Requester( dbc,
             module['transformations'], module['fields'], module['options'] )
-        json = Requester.request(
+        r = Requester.request(
             config.get( loc_config_key, 'url' ), module['options'] )
-        for obj in req.format_json( json ):
+        for obj in req.format_json( r ):
             obj['location'] = loc
             criteria = {module['timestamp']: obj[module['timestamp']]}
+            if module['options']['mqtt']:
+                # Connect to MQTT server and fire off JSON blob.
+                mqtt_connect_and_send(
+                    module['options']['mqtt'], module['options']['mqtt_ca'],
+                    # User default=str to force serialize dates.
+                    json.dumps( obj, default=str ) )
             req.store(
                 obj, module['model'],
                 getattr( module['model'], module['timestamp'] ),

@@ -24,7 +24,7 @@ from urlparse import urlparse
 def mqtt_on_connect( client, userdata, flags, rc ):
     logger = logging.getLogger( 'fetch.mqtt' )
 
-    msg_body = userdata[1].replace( '"', '\\"' )
+    msg_body = userdata[1]
 
     logger.debug(
         'connected, publishing %s to %s...', msg_body, userdata[0] )
@@ -82,6 +82,8 @@ def fetch_mod( module_key, module, args, config, dbc ):
             module, config, loc_config_key, 'mqtt', None )
         fetch_set_ini_option(
             module, config, loc_config_key, 'mqtt_ca', None )
+        fetch_set_ini_option(
+            module, config, loc_config_key, 'mqtt_escape_q', False )
 
         req = Requester( dbc,
             module['transformations'], module['fields'], module['options'] )
@@ -95,7 +97,9 @@ def fetch_mod( module_key, module, args, config, dbc ):
                 mqtt_connect_and_send(
                     module['options']['mqtt'], module['options']['mqtt_ca'],
                     # User default=str to force serialize dates.
-                    json.dumps( obj, default=str ) )
+                    json.dumps( obj, default=str ).replace( '"', '\\"' ) if
+                        module['options']['mqtt_escape_q'] else
+                            json.dumps( obj, default=str ) )
             req.store(
                 obj, module['model'],
                 getattr( module['model'], module['timestamp'] ),

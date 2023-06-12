@@ -1,0 +1,48 @@
+---
+tablename: i2cerv
+timestamp: updated
+options: {}
+transformations:
+  updated:
+  - Requester.format_date
+fields:
+  location:
+    type: int
+    primary_key: true
+  updated:
+    type: datetime
+    primary_key: true
+  temperature:
+    type: float
+  relative_humidity:
+    type: float
+  co2:
+    type: float
+  eco2:
+    type: float
+  tvoc:
+    type: float
+  pm10_standard:
+    type: float
+  pm25_standard:
+    type: float
+  pm100_standard:
+    type: float
+  pm10_env:
+    type: float
+  pm25_env:
+    type: float
+  pm100_env:
+    type: float
+  particles_03um:
+    type: float
+  particles_05um:
+    type: float
+  particles_10um:
+    type: float
+  particles_25um:
+    type: float
+  particles_50um:
+    type: float
+  particles_100um:
+    type: float

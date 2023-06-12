@@ -2,6 +2,7 @@
 import logging
 import requests
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
 
 class Requester( object ):
@@ -140,16 +141,14 @@ class Requester( object ):
             json_obj = self._format_json_obj( json )
             yield json_obj
 
-    def store( self, json_obj, model, filter_col, **criteria ):
+    def store( self, json_obj, model, **criteria ):
         logger = logging.getLogger( 'request.store' )
-        logger.debug( 'checking for {} in {}...'.format(
-            criteria, filter_col ) )
-        if not self.session.query( filter_col ) \
-        .filter_by( **criteria ).scalar():
-            logger.debug( 'storing new data: {}'.format( json_obj ) )
-            db_row = model( **json_obj )
+        logger.debug( 'storing new data: {}'.format( json_obj ) )
+        db_row = model( **json_obj )
+        try:
             self.session.add( db_row )
-
-    def commit( self ):
-        self.session.commit()
+            self.session.commit()
+        except IntegrityError as e:
+            logger.warn( e )
+            self.session.rollback()
 

@@ -91,7 +91,7 @@ def fetch_mod( module_key, module, args, config, dbc ):
             config.get( loc_config_key, 'url' ), module['options'] )
         for obj in req.format_json( r ):
             obj['location'] = loc
-            criteria = {module['timestamp']: obj[module['timestamp']]}
+            criteria = {}
             if module['options']['mqtt']:
                 # Connect to MQTT server and fire off JSON blob.
                 mqtt_connect_and_send(
@@ -100,12 +100,7 @@ def fetch_mod( module_key, module, args, config, dbc ):
                     json.dumps( obj, default=str ).replace( '"', '\\"' ) if
                         module['options']['mqtt_escape_q'] else
                             json.dumps( obj, default=str ) )
-            req.store(
-                obj, module['model'],
-                getattr( module['model'], module['timestamp'] ),
-                **criteria )
-
-        req.commit()
+            req.store( obj, module['model'], **criteria )
 
 def fetch( args, config ):
 
